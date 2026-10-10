@@ -4,7 +4,8 @@ import { Group } from '@semaphore-protocol/group';
 import { generateProof } from '@semaphore-protocol/proof';
 import { enrollIdentityCommitment, fetchGroupState, submitReportPayload, resolveTopicId } from '../services/api';
 import { PrivacyWarning } from '../components/PrivacyWarning';
-import { ShieldCheck, Lock, AlertTriangle, CheckCircle2, RefreshCw, Send, EyeOff, ShieldAlert, KeyRound, UserCheck } from 'lucide-react';
+import { ShieldCheck, Lock, AlertTriangle, CheckCircle2, RefreshCw, Send, EyeOff, ShieldAlert, KeyRound, UserCheck, ArrowRight } from 'lucide-react';
+import { UserRole } from '../components/Navbar';
 
 const CATEGORIES = [
   { id: 'teaching', label: 'Teaching & Academics' },
@@ -27,12 +28,16 @@ function hashToBigIntString(str: string): string {
 
 interface SubmitReportPageProps {
   initialStudentTicket?: string | null;
-  onOpenLogin?: () => void;
+  userRole?: UserRole;
+  onOpenLogin?: (role?: 'student' | 'admin') => void;
+  onNavigateModerator?: () => void;
 }
 
 export const SubmitReportPage: React.FC<SubmitReportPageProps> = ({
   initialStudentTicket,
+  userRole,
   onOpenLogin,
+  onNavigateModerator,
 }) => {
   // Identity & Enrollment State
   const [studentTicket, setStudentTicket] = useState(
@@ -281,6 +286,62 @@ export const SubmitReportPage: React.FC<SubmitReportPageProps> = ({
       setIsSubmitting(false);
     }
   };
+
+  // Block Administrators from Submitting Reports
+  if (userRole === 'admin') {
+    return (
+      <div className="max-w-3xl mx-auto py-12 px-4">
+        <div className="glass-card p-8 sm:p-10 rounded-3xl border border-amber-500/40 text-center space-y-6 shadow-2xl relative overflow-hidden bg-slate-950/80">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 mx-auto flex items-center justify-center">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-3">
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-mono">
+              <span>Staff Role: Administrator Mode Active</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+              Administrators Cannot Submit Complaints
+            </h2>
+            <p className="text-slate-300 text-sm leading-relaxed max-w-xl mx-auto">
+              To strictly preserve institutional integrity, prevent conflicts of interest, and protect students from administrative bias, feedback submissions are reserved exclusively for verified student identities.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 text-left text-xs space-y-2 max-w-lg mx-auto">
+            <div className="font-semibold text-slate-200 flex items-center space-x-2">
+              <Lock className="w-4 h-4 text-amber-400" />
+              <span>Institutional Trust Boundary</span>
+            </div>
+            <p className="text-slate-400 leading-relaxed">
+              Administrators hold moderation rights to sanitize reports and approve aggregations. Allowing administrators to submit anonymous reports could poison aggregate sentiment metrics or compromise student trust.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-4 pt-2">
+            {onNavigateModerator && (
+              <button
+                onClick={onNavigateModerator}
+                className="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-semibold text-xs px-5 py-3 rounded-xl transition-all shadow-lg shadow-amber-600/20 flex items-center space-x-2"
+              >
+                <span>Go to Moderator Queue</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
+
+            {onOpenLogin && (
+              <button
+                onClick={() => onOpenLogin('student')}
+                className="glass-panel hover:bg-slate-800/80 text-teal-300 font-semibold text-xs px-5 py-3 rounded-xl transition-all border border-teal-500/30 flex items-center space-x-2"
+              >
+                <span>Switch to Student Account</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 py-4">

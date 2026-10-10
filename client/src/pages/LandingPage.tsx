@@ -4,6 +4,7 @@ import { UserRole } from '../components/Navbar';
 
 interface LandingPageProps {
   onNavigateSubmit: () => void;
+  onNavigateModerator?: () => void;
   onNavigateSecurity: () => void;
   onOpenLogin?: (role?: 'student' | 'admin') => void;
   userRole?: UserRole;
@@ -11,6 +12,7 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   onNavigateSubmit,
+  onNavigateModerator,
   onNavigateSecurity,
   onOpenLogin,
   userRole,
@@ -39,13 +41,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </p>
 
           <div className="pt-2 flex flex-wrap gap-4 items-center">
-            <button
-              onClick={onNavigateSubmit}
-              className="bg-gradient-to-r from-violet-600 via-indigo-600 to-teal-500 hover:from-violet-500 hover:to-teal-400 text-white font-semibold text-sm px-6 py-3.5 rounded-xl shadow-lg shadow-violet-600/25 transition-all flex items-center space-x-2 group"
-            >
-              <span>Submit Anonymous Feedback</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </button>
+            {userRole === 'admin' ? (
+              <button
+                onClick={onNavigateModerator}
+                className="bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500 hover:from-amber-500 hover:to-orange-400 text-white font-semibold text-sm px-6 py-3.5 rounded-xl shadow-lg shadow-amber-600/25 transition-all flex items-center space-x-2 group"
+              >
+                <span>Review Moderator Queue</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </button>
+            ) : (
+              <button
+                onClick={onNavigateSubmit}
+                className="bg-gradient-to-r from-violet-600 via-indigo-600 to-teal-500 hover:from-violet-500 hover:to-teal-400 text-white font-semibold text-sm px-6 py-3.5 rounded-xl shadow-lg shadow-violet-600/25 transition-all flex items-center space-x-2 group"
+              >
+                <span>Submit Anonymous Feedback</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </button>
+            )}
 
             {onOpenLogin && !userRole && (
               <>

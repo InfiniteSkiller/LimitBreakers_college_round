@@ -85,7 +85,14 @@ export function App() {
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         {activeTab === 'overview' && (
           <LandingPage
-            onNavigateSubmit={() => setActiveTab('submit')}
+            onNavigateSubmit={() => {
+              if (userRole === 'admin') {
+                setActiveTab('moderator');
+              } else {
+                setActiveTab('submit');
+              }
+            }}
+            onNavigateModerator={() => setActiveTab('moderator')}
             onNavigateSecurity={() => setActiveTab('security')}
             onOpenLogin={handleOpenLogin}
             userRole={userRole}
@@ -94,7 +101,9 @@ export function App() {
         {activeTab === 'submit' && (
           <SubmitReportPage
             initialStudentTicket={studentTicket}
+            userRole={userRole}
             onOpenLogin={() => handleOpenLogin('student')}
+            onNavigateModerator={() => setActiveTab('moderator')}
           />
         )}
         {activeTab === 'moderator' && (

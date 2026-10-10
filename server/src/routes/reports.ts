@@ -20,6 +20,8 @@ const submitReportSchema = z.object({
   proof: semaphoreProofSchema,
 });
 
+const MODERATOR_TOKEN = process.env.MODERATOR_SECRET_TOKEN || 'moderator-secret-token-2026';
+
 export async function reportRoutes(
   fastify: FastifyInstance,
   opts: { reportService?: ReportService; enrollmentService?: EnrollmentService }
@@ -28,6 +30,16 @@ export async function reportRoutes(
   const reportService = opts.reportService || new ReportService(defaultDb, enrollmentService);
 
   fastify.post('/api/reports', async (request, reply) => {
+    // Prohibit administrators/moderators from submitting feedback reports
+    const authHeader = request.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      if (token === MODERATOR_TOKEN) {
+        return reply.status(403).send({
+          error: 'Forbidden: Administrators and staff moderators are not permitted to submit feedback reports.',
+        });
+      }
+    }
     const parseResult = submitReportSchema.safeParse(request.body);
 
     if (!parseResult.success) {
