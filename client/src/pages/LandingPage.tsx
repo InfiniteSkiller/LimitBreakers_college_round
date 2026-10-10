@@ -1,12 +1,20 @@
 import React from 'react';
-import { Shield, Lock, EyeOff, ShieldAlert, Cpu, BarChart3, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Shield, Lock, EyeOff, ShieldAlert, Cpu, BarChart3, ArrowRight, CheckCircle2, AlertCircle, GraduationCap, KeyRound } from 'lucide-react';
+import { UserRole } from '../components/Navbar';
 
 interface LandingPageProps {
   onNavigateSubmit: () => void;
   onNavigateSecurity: () => void;
+  onOpenLogin?: (role?: 'student' | 'admin') => void;
+  userRole?: UserRole;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onNavigateSubmit, onNavigateSecurity }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({
+  onNavigateSubmit,
+  onNavigateSecurity,
+  onOpenLogin,
+  userRole,
+}) => {
   return (
     <div className="space-y-16 py-6">
       
@@ -39,12 +47,32 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigateSubmit, onNa
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
 
+            {onOpenLogin && !userRole && (
+              <>
+                <button
+                  onClick={() => onOpenLogin('student')}
+                  className="glass-panel hover:bg-slate-800/80 text-teal-300 font-medium text-sm px-5 py-3.5 rounded-xl transition-all border border-teal-500/30 flex items-center space-x-2"
+                >
+                  <GraduationCap className="w-4 h-4 text-teal-400" />
+                  <span>Student Sign-In</span>
+                </button>
+
+                <button
+                  onClick={() => onOpenLogin('admin')}
+                  className="glass-panel hover:bg-slate-800/80 text-amber-300 font-medium text-sm px-5 py-3.5 rounded-xl transition-all border border-amber-500/30 flex items-center space-x-2"
+                >
+                  <KeyRound className="w-4 h-4 text-amber-400" />
+                  <span>Admin Portal</span>
+                </button>
+              </>
+            )}
+
             <button
               onClick={onNavigateSecurity}
               className="glass-panel hover:bg-slate-800/80 text-slate-200 font-medium text-sm px-5 py-3.5 rounded-xl transition-all border border-slate-700 flex items-center space-x-2"
             >
               <Cpu className="w-4 h-4 text-teal-400" />
-              <span>Explore Security Architecture</span>
+              <span>Explore Security</span>
             </button>
           </div>
         </div>

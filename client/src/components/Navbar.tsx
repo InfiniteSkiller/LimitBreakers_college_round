@@ -1,36 +1,39 @@
 import React from 'react';
-import { Shield, Lock, FileText, LayoutDashboard, BarChart3, ShieldCheck, Cpu } from 'lucide-react';
+import { Shield, Lock, FileText, LayoutDashboard, BarChart3, Cpu, GraduationCap, KeyRound, LogOut, UserCheck } from 'lucide-react';
+
+export type UserRole = 'student' | 'admin' | null;
 
 interface NavbarProps {
   activeTab: 'overview' | 'submit' | 'moderator' | 'insights' | 'security';
   setActiveTab: (tab: 'overview' | 'submit' | 'moderator' | 'insights' | 'security') => void;
   isBackendConnected: boolean;
-  isModeratorAuthenticated: boolean;
-}
-
-interface NavItem {
-  id: 'overview' | 'submit' | 'moderator' | 'insights' | 'security';
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  badge?: string;
+  userRole: UserRole;
+  studentTicket: string | null;
+  onOpenLogin: (role?: 'student' | 'admin') => void;
+  onLogout: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   isBackendConnected,
-  isModeratorAuthenticated,
+  userRole,
+  studentTicket,
+  onOpenLogin,
+  onLogout,
 }) => {
-  const navItems: NavItem[] = [
-    { id: 'overview', label: 'Overview', icon: Shield },
-    { id: 'submit', label: 'Submit Report', icon: FileText },
-    { id: 'moderator', label: 'Moderator Portal', icon: LayoutDashboard, badge: isModeratorAuthenticated ? 'Auth' : undefined },
-    { id: 'insights', label: 'Recipient Insights', icon: BarChart3 },
-    { id: 'security', label: 'Security & Architecture', icon: Cpu },
+  // Dynamic navigation items based on current role
+  const navItems = [
+    { id: 'overview' as const, label: 'Overview', icon: Shield },
+    ...(userRole === 'admin'
+      ? [{ id: 'moderator' as const, label: 'Moderator Queue', icon: LayoutDashboard, badge: 'Staff' }]
+      : [{ id: 'submit' as const, label: 'Submit Report', icon: FileText }]),
+    { id: 'insights' as const, label: 'Campus Insights', icon: BarChart3 },
+    { id: 'security' as const, label: 'Security & ZK', icon: Cpu },
   ];
 
   return (
-    <header className="sticky top-0 z-50 glass-panel border-b border-slate-800/80 bg-slate-950/80">
+    <header className="sticky top-0 z-40 glass-panel border-b border-slate-800/80 bg-slate-950/85 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
@@ -45,7 +48,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="flex items-center space-x-2">
                 <span className="font-extrabold text-lg tracking-wider gradient-text font-mono">INCOGNITO</span>
                 <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-300 border border-violet-500/20">
-                  Prototype 1
+                  v1.0
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 -mt-0.5">Zero-Knowledge Campus Feedback</p>
@@ -69,7 +72,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   <Icon className={`w-4 h-4 ${isActive ? 'text-violet-400' : 'text-slate-400'}`} />
                   <span>{item.label}</span>
-                  {item.badge && (
+                  {'badge' in item && item.badge && (
                     <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono">
                       {item.badge}
                     </span>
@@ -79,20 +82,67 @@ export const Navbar: React.FC<NavbarProps> = ({
             })}
           </nav>
 
-          {/* System Status Indicators */}
+          {/* User Role Actions & Status */}
           <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2 px-2.5 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-[11px]">
+            {/* API Health Pill */}
+            <div className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-[11px]">
               <span className={`w-2 h-2 rounded-full ${isBackendConnected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
               <span className="text-slate-300 font-mono">{isBackendConnected ? 'API Live' : 'Offline'}</span>
             </div>
-            
-            <button
-              onClick={() => setActiveTab('submit')}
-              className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-medium text-xs px-3.5 py-2 rounded-lg shadow-md shadow-violet-600/20 transition-all flex items-center space-x-1.5"
-            >
-              <Lock className="w-3.5 h-3.5" />
-              <span>Report Anonymously</span>
-            </button>
+
+            {/* Authenticated State Display */}
+            {userRole === 'student' && (
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-violet-950/60 border border-violet-500/40 text-xs">
+                  <GraduationCap className="w-3.5 h-3.5 text-violet-400" />
+                  <span className="text-violet-200 font-mono font-medium">{studentTicket || 'Student'}</span>
+                </div>
+                <button
+                  onClick={onLogout}
+                  title="Switch / Log out"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800/60 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {userRole === 'admin' && (
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-teal-950/60 border border-teal-500/40 text-xs">
+                  <KeyRound className="w-3.5 h-3.5 text-teal-400" />
+                  <span className="text-teal-200 font-medium">Administrator</span>
+                </div>
+                <button
+                  onClick={onLogout}
+                  title="Switch / Log out"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800/60 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Unauthenticated Role Buttons */}
+            {!userRole && (
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => onOpenLogin('student')}
+                  className="bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border border-slate-700 text-xs font-medium px-3 py-1.5 rounded-lg transition-all flex items-center space-x-1.5"
+                >
+                  <GraduationCap className="w-3.5 h-3.5 text-violet-400" />
+                  <span>Student Sign In</span>
+                </button>
+
+                <button
+                  onClick={() => onOpenLogin('admin')}
+                  className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-medium text-xs px-3.5 py-1.5 rounded-lg shadow-md shadow-violet-600/20 transition-all flex items-center space-x-1.5"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>Admin Portal</span>
+                </button>
+              </div>
+            )}
           </div>
 
         </div>

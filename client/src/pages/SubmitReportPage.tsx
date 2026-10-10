@@ -25,13 +25,30 @@ function hashToBigIntString(str: string): string {
   return hash.toString();
 }
 
-export const SubmitReportPage: React.FC = () => {
+interface SubmitReportPageProps {
+  initialStudentTicket?: string | null;
+  onOpenLogin?: () => void;
+}
+
+export const SubmitReportPage: React.FC<SubmitReportPageProps> = ({
+  initialStudentTicket,
+  onOpenLogin,
+}) => {
   // Identity & Enrollment State
-  const [studentTicket, setStudentTicket] = useState('STU-ALICE-101');
+  const [studentTicket, setStudentTicket] = useState(
+    initialStudentTicket || localStorage.getItem('incognito_student_ticket') || 'STU-ALICE-101'
+  );
   const [identity, setIdentity] = useState<Identity | null>(null);
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [enrollLoading, setEnrollLoading] = useState(false);
   const [enrollError, setEnrollError] = useState<string | null>(null);
+
+  // Sync ticket if prop changes
+  useEffect(() => {
+    if (initialStudentTicket) {
+      setStudentTicket(initialStudentTicket);
+    }
+  }, [initialStudentTicket]);
 
   // Group State
   const [groupCommitments, setGroupCommitments] = useState<string[]>([]);
