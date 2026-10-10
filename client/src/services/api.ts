@@ -37,6 +37,20 @@ export interface GroupStateResponse {
   depth: number;
 }
 
+export interface TopicItem {
+  id: number;
+  name: string;
+  category: string;
+  period: string;
+  active: boolean;
+  created_at: string;
+}
+
+export interface TopicResolveResponse {
+  topicId: number;
+  scopeId: string;
+}
+
 const API_BASE = '/api';
 
 export async function checkHealth() {
@@ -67,6 +81,25 @@ export async function fetchGroupState(): Promise<GroupStateResponse> {
   const data = await res.json();
   if (!res.ok) {
     throw new Error(data.error || 'Failed to fetch group state');
+  }
+  return data;
+}
+
+export async function fetchTopics(): Promise<TopicItem[]> {
+  const res = await fetch(`${API_BASE}/topics`);
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to fetch topics');
+  }
+  return data.topics;
+}
+
+export async function resolveTopicId(category: string, period: string): Promise<TopicResolveResponse> {
+  const params = new URLSearchParams({ category, period });
+  const res = await fetch(`${API_BASE}/topics/resolve?${params.toString()}`);
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to resolve topic');
   }
   return data;
 }

@@ -36,11 +36,15 @@ export class SemaphoreMembershipVerifier {
   }
 
   /**
-   * Verify an incoming Semaphore ZK Membership Proof
+   * Verify an incoming Semaphore ZK Membership Proof.
+   *
+   * @param proof          The Semaphore proof payload
+   * @param expectedTopicId Numeric topic ID — must match proof.scope and the on-chain topicId
+   * @param expectedContent Report content bound to the proof message
    */
   public async verifyMembershipProof(
     proof: SemaphoreProofInput,
-    expectedScopeId: string,
+    expectedTopicId: number,
     expectedContent: string
   ): Promise<VerificationResult> {
     if (!proof || typeof proof !== 'object') {
@@ -49,22 +53,23 @@ export class SemaphoreMembershipVerifier {
 
     const { merkleTreeDepth, merkleTreeRoot, nullifier, message, scope, points } = proof;
 
-    if (!merkleTreeDepth || !merkleTreeRoot || !nullifier || !message || !scope || !Array.isArray(points)) {
+    if (!merkleTreeDepth || !merkleTreeRoot || !nullifier || message === undefined || scope === undefined || !Array.isArray(points)) {
       return { isValid: false, error: 'Malformed proof payload. Missing required Semaphore proof fields.', isSimulated: false };
     }
 
-    // 1. Validate scope and message binding against expected scope & content
-    const expectedScopeBigIntStr = hashToBigIntString(expectedScopeId);
-    if (scope !== expectedScopeBigIntStr && scope !== expectedScopeId) {
+    // 1. Validate scope — proof must be generated with the numeric topic ID as scope
+    const expectedScopeStr = String(expectedTopicId);
+    if (String(scope) !== expectedScopeStr) {
       return {
         isValid: false,
-        error: `Scope binding mismatch: Proof bound to scope '${scope}', expected '${expectedScopeBigIntStr}' for scope '${expectedScopeId}'`,
+        error: `Scope binding mismatch: Proof bound to scope '${scope}', expected topic ID '${expectedScopeStr}'`,
         isSimulated: false,
       };
     }
 
+    // 2. Validate message binding against expected content hash
     const expectedMessageBigIntStr = hashToBigIntString(expectedContent);
-    if (message !== expectedMessageBigIntStr && message !== expectedContent) {
+    if (String(message) !== expectedMessageBigIntStr && String(message) !== expectedContent) {
       return {
         isValid: false,
         error: `Message binding mismatch: Proof message does not match submitted report content.`,
@@ -107,7 +112,7 @@ export class SemaphoreMembershipVerifier {
       return {
         isValid: true,
         nullifier,
-        scopeId: expectedScopeId,
+        scopeId: expectedScopeStr,
         isSimulated: false,
       };
     } catch (err: any) {

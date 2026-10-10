@@ -23,7 +23,7 @@ export async function enrollmentRoutes(fastify: FastifyInstance, opts: { enrollm
     }
 
     const { studentTicket, identityCommitment } = parseResult.data;
-    const result = enrollmentService.enrollCommitment(studentTicket, identityCommitment);
+    const result = await enrollmentService.enrollCommitment(studentTicket, identityCommitment);
 
     if (!result.success) {
       return reply.status(400).send({ error: result.error });

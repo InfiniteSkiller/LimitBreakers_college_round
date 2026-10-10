@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Identity } from '@semaphore-protocol/identity';
 import { Group } from '@semaphore-protocol/group';
 import { generateProof } from '@semaphore-protocol/proof';
-import { enrollIdentityCommitment, fetchGroupState, submitReportPayload } from '../services/api';
+import { enrollIdentityCommitment, fetchGroupState, submitReportPayload, resolveTopicId } from '../services/api';
 import { PrivacyWarning } from '../components/PrivacyWarning';
 import { ShieldCheck, Lock, AlertTriangle, CheckCircle2, RefreshCw, Send, EyeOff, ShieldAlert, KeyRound, UserCheck } from 'lucide-react';
 
@@ -177,15 +177,17 @@ export const SubmitReportPage: React.FC = () => {
       // 2. Reconstruct group
       const group = new Group(state.commitments);
 
-      const messageBigIntStr = hashToBigIntString(content);
-      const scopeBigIntStr = hashToBigIntString(currentScopeId);
+      // 3. Resolve numeric topic ID from the server (aligns with on-chain topicId)
+      const { topicId } = await resolveTopicId(category, period);
 
-      // 3. Generate real Semaphore v4 ZK Proof
+      const messageBigIntStr = hashToBigIntString(content);
+
+      // 4. Generate real Semaphore v4 ZK Proof with numeric topicId as scope
       const proof = await generateProof(
         identity,
         group,
         messageBigIntStr,
-        scopeBigIntStr,
+        topicId,        // numeric scope — matches contract's proof.scope == topicId
         16,
         {
           wasm: '/snark-artifacts/semaphore.wasm',

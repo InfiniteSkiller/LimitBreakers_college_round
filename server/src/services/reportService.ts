@@ -1,7 +1,9 @@
-import { Database as SqliteDatabase } from 'better-sqlite3';
+import { SqliteDatabase } from '../db/database.js';
 import crypto from 'node:crypto';
 import { SemaphoreMembershipVerifier, SemaphoreProofInput } from './verifier.js';
 import { EnrollmentService } from './enrollmentService.js';
+import { TopicRegistryService } from './topicRegistry.js';
+import { BlockchainService } from './blockchainService.js';
 import { PrivacyRiskGate } from './privacyGate.js';
 
 export interface SubmitReportInput {
@@ -15,11 +17,14 @@ export interface ReportRecord {
   id: string;
   category: string;
   scope_id: string;
+  topic_id: number | null;
   content: string;
   sanitized_content?: string;
   status: string;
   privacy_flags: string[];
   is_serious_allegation: boolean;
+  tx_hash?: string;
+  on_chain_status: string;
   created_at: string;
   updated_at: string;
 }
@@ -37,11 +42,20 @@ export interface AggregateSummary {
 export class ReportService {
   private db: SqliteDatabase;
   private verifier: SemaphoreMembershipVerifier;
+  private topicRegistry: TopicRegistryService;
+  private blockchainService: BlockchainService | null;
   private static MIN_AGGREGATE_THRESHOLD = 3;
 
-  constructor(db: SqliteDatabase, enrollmentService: EnrollmentService) {
+  constructor(
+    db: SqliteDatabase,
+    enrollmentService: EnrollmentService,
+    topicRegistry?: TopicRegistryService,
+    blockchainService?: BlockchainService
+  ) {
     this.db = db;
     this.verifier = new SemaphoreMembershipVerifier(enrollmentService);
+    this.topicRegistry = topicRegistry || new TopicRegistryService(db);
+    this.blockchainService = blockchainService || null;
   }
 
   public async submitReport(input: SubmitReportInput): Promise<{
@@ -50,6 +64,8 @@ export class ReportService {
     status?: string;
     privacyFlags?: string[];
     isSeriousAllegation?: boolean;
+    txHash?: string;
+    onChainStatus?: string;
     error?: string;
     statusCode: number;
   }> {
@@ -69,8 +85,12 @@ export class ReportService {
       };
     }
 
-    // 2. Verify real Semaphore ZK membership proof & root against trusted server group
-    const verification = await this.verifier.verifyMembershipProof(proof, scopeId, content);
+    // 2. Resolve the numeric topic ID for this scope
+    const period = scopeId.slice(expectedPrefix.length);
+    const topicId = this.topicRegistry.getOrCreateTopic(category, period);
+
+    // 3. Verify real Semaphore ZK membership proof using numeric topic ID as scope
+    const verification = await this.verifier.verifyMembershipProof(proof, topicId, content);
     if (!verification.isValid || !verification.nullifier) {
       return {
         success: false,
@@ -83,7 +103,7 @@ export class ReportService {
     const nullifierId = crypto.randomUUID();
     const nowIso = new Date().toISOString();
 
-    // 3. Register Nullifier uniquely for scope_id (Enforces scope-specific duplicate prevention)
+    // 4. Register Nullifier uniquely for scope_id (Enforces scope-specific duplicate prevention)
     try {
       const insertNullifierStmt = this.db.prepare(
         'INSERT INTO nullifiers (id, scope_id, nullifier, created_at) VALUES (?, ?, ?, ?)'
@@ -101,26 +121,46 @@ export class ReportService {
       throw err;
     }
 
-    // 4. Privacy Risk Gate Analysis
+    // 5. Submit proof on-chain (if blockchain is configured)
+    let txHash: string | undefined;
+    let onChainStatus = 'off_chain_only';
+
+    if (this.blockchainService?.isConfigured) {
+      const onChainResult = await this.blockchainService.submitProofOnChain(topicId, proof);
+      if (onChainResult.success && onChainResult.txHash !== '0x0') {
+        txHash = onChainResult.txHash;
+        onChainStatus = 'confirmed';
+      } else if (!onChainResult.success) {
+        // On-chain failed but off-chain succeeded — record the failure but don't reject
+        onChainStatus = 'failed';
+        console.warn(`On-chain submission failed: ${onChainResult.error}`);
+      }
+    }
+
+    // 6. Privacy Risk Gate Analysis
     const privacyAnalysis = PrivacyRiskGate.analyzeReport(content);
 
-    // 5. Save Report (No student ID, secret, or identity commitment is stored in the report record!)
+    // 7. Save Report (No student ID, secret, or identity commitment is stored in the report record!)
     const reportId = crypto.randomUUID();
     const insertReportStmt = this.db.prepare(`
       INSERT INTO reports (
-        id, category, scope_id, content, sanitized_content, status, privacy_flags, is_serious_allegation, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, category, scope_id, topic_id, content, sanitized_content, status,
+        privacy_flags, is_serious_allegation, tx_hash, on_chain_status, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     insertReportStmt.run(
       reportId,
       category,
       scopeId,
+      topicId,
       content,
       privacyAnalysis.sanitizedContent || null,
       privacyAnalysis.status,
       JSON.stringify(privacyAnalysis.privacyFlags),
       privacyAnalysis.isSeriousAllegation ? 1 : 0,
+      txHash || null,
+      onChainStatus,
       nowIso,
       nowIso
     );
@@ -131,12 +171,14 @@ export class ReportService {
       status: privacyAnalysis.status,
       privacyFlags: privacyAnalysis.privacyFlags,
       isSeriousAllegation: privacyAnalysis.isSeriousAllegation,
+      txHash,
+      onChainStatus,
       statusCode: 201,
     };
   }
 
   public getModeratorReports(statusFilter?: string): ReportRecord[] {
-    let sql = 'SELECT id, category, scope_id, content, sanitized_content, status, privacy_flags, is_serious_allegation, created_at, updated_at FROM reports';
+    let sql = 'SELECT id, category, scope_id, topic_id, content, sanitized_content, status, privacy_flags, is_serious_allegation, tx_hash, on_chain_status, created_at, updated_at FROM reports';
     const params: any[] = [];
 
     if (statusFilter && statusFilter !== 'all') {
@@ -152,11 +194,14 @@ export class ReportService {
       id: r.id,
       category: r.category,
       scope_id: r.scope_id,
+      topic_id: r.topic_id,
       content: r.content,
       sanitized_content: r.sanitized_content || undefined,
       status: r.status,
       privacy_flags: JSON.parse(r.privacy_flags || '[]'),
       is_serious_allegation: Boolean(r.is_serious_allegation),
+      tx_hash: r.tx_hash || undefined,
+      on_chain_status: r.on_chain_status,
       created_at: r.created_at,
       updated_at: r.updated_at,
     }));

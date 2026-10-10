@@ -5,6 +5,7 @@ import { Identity } from '@semaphore-protocol/identity';
 import { Group } from '@semaphore-protocol/group';
 import { generateProof } from '@semaphore-protocol/proof';
 import { EnrollmentService } from '../src/services/enrollmentService.js';
+import { TopicRegistryService } from '../src/services/topicRegistry.js';
 import { hashToBigIntString } from '../src/services/verifier.js';
 import { PrivacyRiskGate } from '../src/services/privacyGate.js';
 
@@ -12,13 +13,22 @@ describe('Incognito Anonymous Feedback Platform - Real Semaphore V4 Test Suite',
   let app: ReturnType<typeof buildApp>;
   let db: ReturnType<typeof createDatabase>;
   let enrollmentService: EnrollmentService;
+  let topicRegistry: TopicRegistryService;
 
   beforeEach(() => {
     // Fresh in-memory SQLite database for every test
     db = createDatabase(':memory:');
     app = buildApp(db);
     enrollmentService = new EnrollmentService(db);
+    topicRegistry = new TopicRegistryService(db);
   });
+
+  /**
+   * Helper: resolve a numeric topic ID for a scope (creates topic if needed).
+   */
+  function resolveTopicId(category: string, period: string): number {
+    return topicRegistry.getOrCreateTopic(category, period);
+  }
 
   // Test 1: Real enrolled Semaphore identity generates valid proof and is accepted
   it('1. should accept valid Semaphore V4 membership proof from enrolled identity', async () => {
@@ -39,19 +49,23 @@ describe('Incognito Anonymous Feedback Platform - Real Semaphore V4 Test Suite',
     const group = new Group(commitments);
 
     const category = 'teaching';
-    const scopeId = 'teaching:2026-Q4';
+    const period = '2026-Q4';
+    const scopeId = `${category}:${period}`;
     const content = 'Constructive feedback regarding course textbook availability.';
 
-    // 3. Generate real Semaphore proof using hashed BigInt strings
+    // 3. Resolve numeric topic ID (used as proof scope — aligns with on-chain topicId)
+    const topicId = resolveTopicId(category, period);
+
+    // 4. Generate real Semaphore proof with numeric topicId as scope
     const proof = await generateProof(
       identity,
       group,
       hashToBigIntString(content),
-      hashToBigIntString(scopeId),
+      topicId,
       16
     );
 
-    // 4. Submit report
+    // 5. Submit report
     const response = await app.inject({
       method: 'POST',
       url: '/api/reports',
@@ -85,14 +99,14 @@ describe('Incognito Anonymous Feedback Platform - Real Semaphore V4 Test Suite',
     // Non-member B creates a proof using their own identity and a fake local group
     const nonMemberB = new Identity();
     const fakeGroup = new Group([nonMemberB.commitment.toString()]);
-    const scopeId = 'teaching:2026-Q4';
+    const topicId = resolveTopicId('teaching', '2026-Q4');
     const content = 'Unauthorized report from unenrolled user.';
 
     const proof = await generateProof(
       nonMemberB,
       fakeGroup,
       hashToBigIntString(content),
-      hashToBigIntString(scopeId),
+      topicId,
       16
     );
 
@@ -101,7 +115,7 @@ describe('Incognito Anonymous Feedback Platform - Real Semaphore V4 Test Suite',
       url: '/api/reports',
       payload: {
         category: 'teaching',
-        scopeId,
+        scopeId: 'teaching:2026-Q4',
         content,
         proof,
       },
@@ -127,13 +141,13 @@ describe('Incognito Anonymous Feedback Platform - Real Semaphore V4 Test Suite',
     const groupRes = await app.inject({ method: 'GET', url: '/api/group/state' });
     const group = new Group(groupRes.json().commitments);
 
-    const scopeId = 'teaching:2026-Q4';
+    const topicId = resolveTopicId('teaching', '2026-Q4');
     const content = 'Report content for alter proof test.';
     const proof = await generateProof(
       identity,
       group,
       hashToBigIntString(content),
-      hashToBigIntString(scopeId),
+      topicId,
       16
     );
 
@@ -151,7 +165,7 @@ describe('Incognito Anonymous Feedback Platform - Real Semaphore V4 Test Suite',
       url: '/api/reports',
       payload: {
         category: 'teaching',
-        scopeId,
+        scopeId: 'teaching:2026-Q4',
         content,
         proof: tamperedProof,
       },
@@ -179,12 +193,14 @@ describe('Incognito Anonymous Feedback Platform - Real Semaphore V4 Test Suite',
     const originalContent = 'Original feedback content text.';
     const tamperedContent = 'Tampered feedback content text altered after proof generation.';
 
+    const topicId = resolveTopicId('teaching', '2026-Q4');
+
     // Generate proof bound to originalContent
     const proof = await generateProof(
       identity,
       group,
       hashToBigIntString(originalContent),
-      hashToBigIntString('teaching:2026-Q4'),
+      topicId,
       16
     );
 
@@ -219,13 +235,14 @@ describe('Incognito Anonymous Feedback Platform - Real Semaphore V4 Test Suite',
     const groupRes = await app.inject({ method: 'GET', url: '/api/group/state' });
     const group = new Group(groupRes.json().commitments);
 
+    const topicId = resolveTopicId('teaching', '2026-Q4');
     const scopeId = 'teaching:2026-Q4';
     const content1 = 'First valid anonymous submission regarding assignment deadlines.';
     const proof1 = await generateProof(
       identity,
       group,
       hashToBigIntString(content1),
-      hashToBigIntString(scopeId),
+      topicId,
       16
     );
 
@@ -248,7 +265,7 @@ describe('Incognito Anonymous Feedback Platform - Real Semaphore V4 Test Suite',
       identity,
       group,
       hashToBigIntString(content2),
-      hashToBigIntString(scopeId),
+      topicId,
       16
     );
 
@@ -284,6 +301,8 @@ describe('Incognito Anonymous Feedback Platform - Real Semaphore V4 Test Suite',
     const groupRes = await app.inject({ method: 'GET', url: '/api/group/state' });
     const group = new Group(groupRes.json().commitments);
 
+    const topicIdA = resolveTopicId('teaching', '2026-Q4');
+    const topicIdB = resolveTopicId('facilities', '2026-Q4');
     const scopeA = 'teaching:2026-Q4';
     const scopeB = 'facilities:2026-Q4';
 
@@ -294,14 +313,14 @@ describe('Incognito Anonymous Feedback Platform - Real Semaphore V4 Test Suite',
       identity,
       group,
       hashToBigIntString(contentA),
-      hashToBigIntString(scopeA),
+      topicIdA,
       16
     );
     const proofB = await generateProof(
       identity,
       group,
       hashToBigIntString(contentB),
-      hashToBigIntString(scopeB),
+      topicIdB,
       16
     );
 
@@ -340,13 +359,14 @@ describe('Incognito Anonymous Feedback Platform - Real Semaphore V4 Test Suite',
     const groupRes = await app.inject({ method: 'GET', url: '/api/group/state' });
     const group = new Group(groupRes.json().commitments);
 
+    const topicId = resolveTopicId('safety', '2026-Q4');
     const scopeId = 'safety:2026-Q4';
     const content = 'Concurrent submission test regarding hallway lighting.';
     const proof = await generateProof(
       identity,
       group,
       hashToBigIntString(content),
-      hashToBigIntString(scopeId),
+      topicId,
       16
     );
 
@@ -420,13 +440,14 @@ describe('Incognito Anonymous Feedback Platform - Real Semaphore V4 Test Suite',
     const groupRes = await app.inject({ method: 'GET', url: '/api/group/state' });
     const group = new Group(groupRes.json().commitments);
 
+    const topicId = resolveTopicId('welfare', '2026-Q4');
     const scopeId = 'welfare:2026-Q4';
     const content = 'Student welfare counseling hours should be extended on weekends.';
     const proof = await generateProof(
       identity,
       group,
       hashToBigIntString(content),
-      hashToBigIntString(scopeId),
+      topicId,
       16
     );
 
@@ -446,5 +467,76 @@ describe('Incognito Anonymous Feedback Platform - Real Semaphore V4 Test Suite',
 
     expect(adminStr).not.toContain(studentTicket);
     expect(adminStr).not.toContain(identity.commitment.toString());
+  });
+
+  // Test 12: Topics API — resolve returns correct numeric ID and scopes are deterministic
+  it('12. should resolve category+period to a deterministic numeric topicId via the topics API', async () => {
+    // First resolve creates the topic
+    const res1 = await app.inject({
+      method: 'GET',
+      url: '/api/topics/resolve?category=teaching&period=2026-Q4',
+    });
+    expect(res1.statusCode).toBe(200);
+    const body1 = res1.json();
+    expect(body1.topicId).toBe(1);
+    expect(body1.scopeId).toBe('teaching:2026-Q4');
+
+    // Second call returns the same ID (idempotent)
+    const res2 = await app.inject({
+      method: 'GET',
+      url: '/api/topics/resolve?category=teaching&period=2026-Q4',
+    });
+    expect(res2.json().topicId).toBe(1);
+
+    // Different scope gets a different ID
+    const res3 = await app.inject({
+      method: 'GET',
+      url: '/api/topics/resolve?category=facilities&period=2026-Q4',
+    });
+    expect(res3.json().topicId).toBe(2);
+  });
+
+  // Test 13: Full scope alignment — proof scope matches numeric topic ID
+  it('13. should verify that proof scope matches the numeric topicId used by the contract', async () => {
+    const identity = new Identity();
+    await app.inject({
+      method: 'POST',
+      url: '/api/enroll',
+      payload: {
+        studentTicket: 'STU-SCOPE-ALIGN',
+        identityCommitment: identity.commitment.toString(),
+      },
+    });
+
+    const groupRes = await app.inject({ method: 'GET', url: '/api/group/state' });
+    const group = new Group(groupRes.json().commitments);
+
+    const topicId = resolveTopicId('administration', '2026-Q4');
+    const content = 'Admin office hours need to be more accessible.';
+
+    const proof = await generateProof(
+      identity,
+      group,
+      hashToBigIntString(content),
+      topicId,
+      16
+    );
+
+    // Verify proof.scope equals the numeric topic ID
+    expect(String(proof.scope)).toBe(String(topicId));
+
+    // Submit should succeed
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/reports',
+      payload: {
+        category: 'administration',
+        scopeId: 'administration:2026-Q4',
+        content,
+        proof,
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
   });
 });
