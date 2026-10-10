@@ -1,9 +1,11 @@
 import { FastifyInstance } from 'fastify';
 import { ReportService } from '../services/reportService.js';
 import { defaultDb } from '../db/database.js';
+import { EnrollmentService } from '../services/enrollmentService.js';
 
 export async function feedbackRoutes(fastify: FastifyInstance, opts: { reportService?: ReportService }) {
-  const reportService = opts.reportService || new ReportService(defaultDb);
+  const reportService = opts.reportService ||
+    new ReportService(defaultDb, new EnrollmentService(defaultDb));
 
   fastify.get('/api/feedback/summary', async (request, reply) => {
     const query = request.query as { category?: string; scopeId?: string };
