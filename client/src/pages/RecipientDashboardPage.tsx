@@ -24,17 +24,19 @@ export const RecipientDashboardPage: React.FC = () => {
     loadSummaries();
   }, [selectedCategory]);
 
-  // Transform summaries for chart visualization
-  const chartData = summaries.map((s) => ({
-    name: `${s.category} (${s.scopeId})`,
-    contributors: s.totalContributors,
-    thresholdMet: s.thresholdMet,
-    category: s.category,
-  }));
+  // Suppressed scopes must not reveal exact contributor counts in charts.
+  const chartData = summaries
+    .filter((s) => s.thresholdMet && s.totalContributors !== null)
+    .map((s) => ({
+      name: `${s.category} (${s.scopeId})`,
+      contributors: s.totalContributors as number,
+      thresholdMet: s.thresholdMet,
+      category: s.category,
+    }));
 
   return (
     <div className="space-y-8 py-4">
-      
+
       {/* Header Banner */}
       <div className="glass-panel p-6 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center space-x-3">
@@ -128,12 +130,12 @@ export const RecipientDashboardPage: React.FC = () => {
               {summary.thresholdMet ? (
                 <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center space-x-1">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Threshold Met ({summary.totalContributors} Contributors)</span>
+                  <span>Threshold Met ({summary.totalContributors ?? summary.minThreshold} Contributors)</span>
                 </span>
               ) : (
                 <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center space-x-1">
                   <AlertOctagon className="w-3.5 h-3.5 text-rose-400" />
-                  <span>Suppressed ({summary.totalContributors}/3 Minimum)</span>
+                  <span>Suppressed (minimum {summary.minThreshold} required)</span>
                 </span>
               )}
             </div>
@@ -153,7 +155,7 @@ export const RecipientDashboardPage: React.FC = () => {
             ) : (
               <div className="p-4 rounded-xl bg-rose-950/30 border border-rose-500/20 text-rose-200/90 text-xs leading-relaxed flex items-start space-x-2">
                 <Lock className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
-                <span>{summary.message}</span>
+                <span>Results remain hidden until at least {summary.minThreshold} contributors are present in this scope.</span>
               </div>
             )}
           </div>

@@ -41,7 +41,8 @@ export class SemaphoreMembershipVerifier {
   public async verifyMembershipProof(
     proof: SemaphoreProofInput,
     expectedScopeId: string,
-    expectedContent: string
+    expectedContent: string,
+    expectedProofScope?: string
   ): Promise<VerificationResult> {
     if (!proof || typeof proof !== 'object') {
       return { isValid: false, error: 'Proof object missing or invalid', isSimulated: false };
@@ -54,8 +55,10 @@ export class SemaphoreMembershipVerifier {
     }
 
     // 1. Validate scope and message binding against expected scope & content
-    const expectedScopeBigIntStr = hashToBigIntString(expectedScopeId);
-    if (scope !== expectedScopeBigIntStr && scope !== expectedScopeId) {
+    // When the chain is enabled the proof scope MUST equal the on-chain topic ID
+    // (passed in as expectedProofScope). Otherwise fall back to the legacy hashed scope.
+    const expectedScopeBigIntStr = expectedProofScope ?? hashToBigIntString(expectedScopeId);
+    if (scope !== expectedScopeBigIntStr && (expectedProofScope !== undefined || scope !== expectedScopeId)) {
       return {
         isValid: false,
         error: `Scope binding mismatch: Proof bound to scope '${scope}', expected '${expectedScopeBigIntStr}' for scope '${expectedScopeId}'`,

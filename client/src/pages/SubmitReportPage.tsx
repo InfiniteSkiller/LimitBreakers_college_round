@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Identity } from '@semaphore-protocol/identity';
 import { Group } from '@semaphore-protocol/group';
 import { generateProof } from '@semaphore-protocol/proof';
-import { enrollIdentityCommitment, fetchGroupState, submitReportPayload } from '../services/api';
+import { enrollIdentityCommitment, fetchGroupState, resolveTopic, submitReportPayload } from '../services/api';
 import { PrivacyWarning } from '../components/PrivacyWarning';
 import { ShieldCheck, Lock, AlertTriangle, CheckCircle2, RefreshCw, Send, EyeOff, ShieldAlert, KeyRound, UserCheck } from 'lucide-react';
 
@@ -178,7 +178,10 @@ export const SubmitReportPage: React.FC = () => {
       const group = new Group(state.commitments);
 
       const messageBigIntStr = hashToBigIntString(content);
-      const scopeBigIntStr = hashToBigIntString(currentScopeId);
+      // The backend tells us which scope to prove against: the on-chain topic ID
+      // (so the contract accepts the proof) or, off-chain, the hashed scope.
+      const topic = await resolveTopic(currentScopeId);
+      const scopeBigIntStr = topic.proofScope;
 
       // 3. Generate real Semaphore v4 ZK Proof
       const proof = await generateProof(
@@ -545,6 +548,11 @@ export const SubmitReportPage: React.FC = () => {
               </div>
 
               <p className="text-xs leading-relaxed">{submissionResult.message}</p>
+              {submissionResult.details?.txHash && (
+                <p className="mt-3 text-[11px] font-mono break-all text-slate-300">
+                  ⛓️ Verified on-chain (topic #{submissionResult.details.topicId}) · tx {submissionResult.details.txHash}
+                </p>
+              )}
             </div>
           )}
         </div>

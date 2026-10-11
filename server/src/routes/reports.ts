@@ -50,6 +50,8 @@ export async function reportRoutes(
       status: result.status,
       privacyFlags: result.privacyFlags,
       isSeriousAllegation: result.isSeriousAllegation,
+      txHash: result.txHash,
+      topicId: result.topicId,
       message: result.status === 'approved_for_aggregation'
         ? 'Report accepted and queued for aggregated feedback.'
         : 'Report received and held for privacy sanitization review.',

@@ -3,6 +3,8 @@ import crypto from 'node:crypto';
 import { SemaphoreMembershipVerifier, SemaphoreProofInput } from './verifier.js';
 import { EnrollmentService } from './enrollmentService.js';
 import { PrivacyRiskGate } from './privacyGate.js';
+import { ChainError, ChainService, DisabledChainService } from './chainService.js';
+import { InvalidScopeError, TopicService } from './topicService.js';
 
 export interface SubmitReportInput {
   category: string;
@@ -22,12 +24,14 @@ export interface ReportRecord {
   is_serious_allegation: boolean;
   created_at: string;
   updated_at: string;
+  tx_hash?: string;
+  topic_id?: number;
 }
 
 export interface AggregateSummary {
   category: string;
   scopeId: string;
-  totalContributors: number;
+  totalContributors: number | null;
   thresholdMet: boolean;
   minThreshold: number;
   sanitizedExcerpts?: string[];
@@ -37,10 +41,19 @@ export interface AggregateSummary {
 export class ReportService {
   private db: SqliteDatabase;
   private verifier: SemaphoreMembershipVerifier;
+  private chain: ChainService;
+  private topics: TopicService;
   private static MIN_AGGREGATE_THRESHOLD = 3;
 
-  constructor(db: SqliteDatabase, enrollmentService: EnrollmentService) {
+  constructor(
+    db: SqliteDatabase,
+    enrollmentService: EnrollmentService,
+    chain: ChainService = new DisabledChainService(),
+    topics: TopicService = new TopicService(db, chain)
+  ) {
     this.db = db;
+    this.chain = chain;
+    this.topics = topics;
     this.verifier = new SemaphoreMembershipVerifier(enrollmentService);
   }
 
@@ -50,6 +63,8 @@ export class ReportService {
     status?: string;
     privacyFlags?: string[];
     isSeriousAllegation?: boolean;
+    txHash?: string;
+    topicId?: number;
     error?: string;
     statusCode: number;
   }> {
@@ -69,8 +84,25 @@ export class ReportService {
       };
     }
 
-    // 2. Verify real Semaphore ZK membership proof & root against trusted server group
-    const verification = await this.verifier.verifyMembershipProof(proof, scopeId, content);
+    // 2. Resolve the scope to its on-chain topic. In on-chain mode the proof's
+    //    `scope` must equal this topic ID, which is what the contract checks too.
+    let topic;
+    try {
+      topic = await this.topics.resolve(scopeId);
+    } catch (err: any) {
+      if (err instanceof InvalidScopeError) {
+        return { success: false, error: err.message, statusCode: 400 };
+      }
+      return { success: false, error: `Could not prepare on-chain topic: ${err.message}`, statusCode: 502 };
+    }
+
+    // 3. Verify real Semaphore ZK membership proof & root against trusted server group
+    const verification = await this.verifier.verifyMembershipProof(
+      proof,
+      scopeId,
+      content,
+      this.chain.enabled ? topic.proofScope : undefined
+    );
     if (!verification.isValid || !verification.nullifier) {
       return {
         success: false,
@@ -83,12 +115,14 @@ export class ReportService {
     const nullifierId = crypto.randomUUID();
     const nowIso = new Date().toISOString();
 
-    // 3. Register Nullifier uniquely for scope_id (Enforces scope-specific duplicate prevention)
+    // 4. Reserve the nullifier for this scope (off-chain duplicate prevention).
+    //    The reservation is released again if the chain rejects for any reason
+    //    other than "already used".
     try {
       const insertNullifierStmt = this.db.prepare(
         'INSERT INTO nullifiers (id, scope_id, nullifier, created_at) VALUES (?, ?, ?, ?)'
       );
-      
+
       insertNullifierStmt.run(nullifierId, scopeId, nullifier, nowIso);
     } catch (err: any) {
       if (err?.code === 'SQLITE_CONSTRAINT' || err?.message?.includes('UNIQUE constraint failed')) {
@@ -101,15 +135,39 @@ export class ReportService {
       throw err;
     }
 
-    // 4. Privacy Risk Gate Analysis
+    // 5. On-chain verification + on-chain duplicate prevention. Only the proof goes
+    //    on-chain; the report text never leaves the backend.
+    let txHash: string | undefined;
+    if (this.chain.enabled) {
+      try {
+        ({ txHash } = await this.chain.submitWithProof(topic.topicId!, proof));
+      } catch (err: any) {
+        const code = err instanceof ChainError ? err.code : 'CHAIN_UNAVAILABLE';
+        if (code === 'NULLIFIER_USED') {
+          // The chain is the source of truth: keep the reservation, it really is used.
+          return {
+            success: false,
+            error: `Duplicate Submission Rejected: the blockchain already recorded this identity for scope '${scopeId}'.`,
+            statusCode: 409,
+          };
+        }
+        this.db.prepare('DELETE FROM nullifiers WHERE id = ?').run(nullifierId);
+        if (code === 'CHAIN_UNAVAILABLE') {
+          return { success: false, error: `Blockchain unavailable, nothing was saved: ${err.message}`, statusCode: 502 };
+        }
+        return { success: false, error: `Blockchain rejected the proof: ${err.message}`, statusCode: 401 };
+      }
+    }
+
+    // 6. Privacy Risk Gate Analysis
     const privacyAnalysis = PrivacyRiskGate.analyzeReport(content);
 
-    // 5. Save Report (No student ID, secret, or identity commitment is stored in the report record!)
+    // 7. Save Report (No student ID, secret, or identity commitment is stored in the report record!)
     const reportId = crypto.randomUUID();
     const insertReportStmt = this.db.prepare(`
       INSERT INTO reports (
-        id, category, scope_id, content, sanitized_content, status, privacy_flags, is_serious_allegation, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, category, scope_id, content, sanitized_content, status, privacy_flags, is_serious_allegation, created_at, updated_at, tx_hash, topic_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     insertReportStmt.run(
@@ -122,12 +180,16 @@ export class ReportService {
       JSON.stringify(privacyAnalysis.privacyFlags),
       privacyAnalysis.isSeriousAllegation ? 1 : 0,
       nowIso,
-      nowIso
+      nowIso,
+      txHash ?? null,
+      topic.topicId
     );
 
     return {
       success: true,
       reportId,
+      txHash,
+      topicId: topic.topicId ?? undefined,
       status: privacyAnalysis.status,
       privacyFlags: privacyAnalysis.privacyFlags,
       isSeriousAllegation: privacyAnalysis.isSeriousAllegation,
@@ -136,7 +198,7 @@ export class ReportService {
   }
 
   public getModeratorReports(statusFilter?: string): ReportRecord[] {
-    let sql = 'SELECT id, category, scope_id, content, sanitized_content, status, privacy_flags, is_serious_allegation, created_at, updated_at FROM reports';
+    let sql = 'SELECT id, category, scope_id, content, sanitized_content, status, privacy_flags, is_serious_allegation, created_at, updated_at, tx_hash, topic_id FROM reports';
     const params: any[] = [];
 
     if (statusFilter && statusFilter !== 'all') {
@@ -159,6 +221,8 @@ export class ReportService {
       is_serious_allegation: Boolean(r.is_serious_allegation),
       created_at: r.created_at,
       updated_at: r.updated_at,
+      tx_hash: r.tx_hash || undefined,
+      topic_id: r.topic_id ?? undefined,
     }));
   }
 
@@ -203,10 +267,11 @@ export class ReportService {
         return {
           category: ag.category,
           scopeId: ag.scope_id,
-          totalContributors,
+          // Do not disclose small-group counts through the API response.
+          totalContributors: null,
           thresholdMet: false,
           minThreshold: ReportService.MIN_AGGREGATE_THRESHOLD,
-          message: `Results suppressed: Contributor count (${totalContributors}) is below the required privacy threshold of ${ReportService.MIN_AGGREGATE_THRESHOLD} contributors.`,
+          message: `Results remain hidden until at least ${ReportService.MIN_AGGREGATE_THRESHOLD} contributors are present in this scope.`,
         };
       }
 
