@@ -4,7 +4,8 @@ import { Group } from '@semaphore-protocol/group';
 import { generateProof } from '@semaphore-protocol/proof';
 import { enrollIdentityCommitment, fetchGroupState, resolveTopic, submitReportPayload } from '../services/api';
 import { PrivacyWarning } from '../components/PrivacyWarning';
-import { ShieldCheck, Lock, AlertTriangle, CheckCircle2, RefreshCw, Send, EyeOff, ShieldAlert, KeyRound, UserCheck } from 'lucide-react';
+import { PageHeader } from '../components/PageHeader';
+import { ShieldCheck, Lock, AlertTriangle, CheckCircle2, Loader2, Send, EyeOff, ShieldAlert, KeyRound, UserCheck, Link2, RotateCcw, Fingerprint } from 'lucide-react';
 
 const CATEGORIES = [
   { id: 'teaching', label: 'Teaching & Academics' },
@@ -267,314 +268,334 @@ export const SubmitReportPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 py-4">
-      {/* Header Banner */}
-      <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-2">
-        <div className="flex items-center space-x-3">
-          <div className="p-2.5 rounded-xl bg-violet-600/20 text-violet-400 border border-violet-500/30">
-            <Lock className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Anonymous Report Submission</h1>
-            <p className="text-slate-400 text-xs">
-              Real Zero-Knowledge Cryptographic Proofs (Semaphore Protocol V4). Zero identity linkage. Scope-bound nullifier protection.
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className="mx-auto max-w-5xl space-y-8 py-4">
+      <PageHeader
+        icon={Lock}
+        kicker="Anonymous submission"
+        title="File a report"
+        description="Your identity secret is created in this browser and never leaves it. The server only receives a Semaphore V4 zero-knowledge proof that you are a member, plus the report text."
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Section (2 cols) */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* STEP 1: Local Identity & Enrollment */}
-          <div className="glass-card p-6 rounded-2xl border border-slate-800 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2 text-white font-semibold text-sm">
-                <span className="w-6 h-6 rounded-full bg-violet-600 text-white flex items-center justify-center text-xs">1</span>
-                <span>Membership Enrollment (Semaphore V4)</span>
-              </div>
-              <span className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded border ${isEnrolled ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/10 text-amber-300 border-amber-500/30'
-                }`}>
-                {isEnrolled ? 'Enrolled & Verified' : 'Action Needed'}
-              </span>
-            </div>
+      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-3">
+        {/* Main column */}
+        <div className="space-y-8 lg:col-span-2">
+          {/* STEP 1: identity + enrollment */}
+          <section className="brut-card">
+            <StepHeader
+              n={1}
+              title="Membership enrollment"
+              right={
+                <span className={`brut-tag ${isEnrolled ? 'brut-tag-go' : 'brut-tag-signal'}`}>
+                  {isEnrolled ? 'Enrolled & verified' : 'Action needed'}
+                </span>
+              }
+            />
 
-            <p className="text-slate-400 text-xs leading-relaxed">
-              Generates a secret Semaphore identity locally in your browser. Only your public commitment is sent for college enrollment authorization.
-            </p>
+            <div className="space-y-4 p-5">
+              <p className="text-sm leading-relaxed text-steel">
+                A secret Semaphore identity is generated locally. Only its public commitment is sent for college enrollment.
+              </p>
 
-            {identity && (
-              <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-slate-400 font-medium flex items-center space-x-1">
-                    <KeyRound className="w-3.5 h-3.5 text-violet-400" />
-                    <span>Browser Identity Commitment (Public):</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleGenerateNewIdentity}
-                    className="text-violet-400 hover:text-violet-300 text-[10px] underline"
-                  >
-                    Reset Identity
-                  </button>
-                </div>
-                <div className="p-2 rounded bg-slate-950 font-mono text-[10px] text-violet-300 break-all select-all border border-slate-800">
-                  {identity.commitment.toString()}
-                </div>
-              </div>
-            )}
-
-            {!isEnrolled ? (
-              <div className="space-y-3 pt-1">
-                <div>
-                  <label className="block text-slate-300 text-xs font-medium mb-1">Demo Student ID / Ticket</label>
-                  <input
-                    type="text"
-                    value={studentTicket}
-                    onChange={(e) => setStudentTicket(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg glass-input text-xs font-mono"
-                    placeholder="e.g. STU-ALICE-101"
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleEnroll}
-                  disabled={enrollLoading}
-                  className="w-full py-2.5 px-4 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-medium text-xs transition-all flex items-center justify-center space-x-2"
-                >
-                  {enrollLoading ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                      <span>Authorizing Commitment...</span>
-                    </>
-                  ) : (
-                    <>
-                      <UserCheck className="w-4 h-4" />
-                      <span>Enroll Commitment into Semaphore Group</span>
-                    </>
-                  )}
-                </button>
-
-                {enrollError && (
-                  <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs flex items-center space-x-2">
-                    <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0" />
-                    <span>{enrollError}</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-emerald-300 text-xs flex items-center space-x-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                <span>Identity Commitment is enrolled in the trusted Semaphore group ({groupCommitments.length} total members).</span>
-              </div>
-            )}
-          </div>
-
-          {/* STEP 2: Report Content & Scope Selection */}
-          <form onSubmit={handleSubmit} className="glass-card p-6 rounded-2xl border border-slate-800 space-y-4">
-            <div className="flex items-center space-x-2 text-white font-semibold text-sm">
-              <span className="w-6 h-6 rounded-full bg-teal-600 text-white flex items-center justify-center text-xs">2</span>
-              <span>Anonymous Report & Scope Selection</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-slate-300 text-xs font-medium mb-1">Reporting Category</label>
-                <select
-                  value={category}
-                  onChange={(e) => {
-                    setCategory(e.target.value);
-                    setProofData(null);
-                  }}
-                  className="w-full px-3 py-2 rounded-lg glass-input text-xs"
-                >
-                  {CATEGORIES.map((cat) => (
-                    <option key={cat.id} value={cat.id} className="bg-slate-900 text-slate-200">
-                      {cat.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-slate-300 text-xs font-medium mb-1">Reporting Period</label>
-                <select
-                  value={period}
-                  onChange={(e) => {
-                    setPeriod(e.target.value);
-                    setProofData(null);
-                  }}
-                  className="w-full px-3 py-2 rounded-lg glass-input text-xs"
-                >
-                  {PERIODS.map((p) => (
-                    <option key={p} value={p} className="bg-slate-900 text-slate-200">
-                      {p}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-slate-300 text-xs font-medium mb-1">Feedback / Report Content</label>
-              <textarea
-                rows={5}
-                value={content}
-                onChange={(e) => {
-                  setContent(e.target.value);
-                  setProofData(null);
-                }}
-                className="w-full p-3 rounded-xl glass-input text-xs font-sans leading-relaxed"
-                placeholder="Describe your feedback, concern, or recommendation clearly. Do not include your name, student ID, or personal emails..."
-              />
-            </div>
-
-            {/* Privacy Pre-Scan Warning */}
-            {detectedDraftFlags.length > 0 && (
-              <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-200 text-xs space-y-1">
-                <div className="flex items-center space-x-2 font-semibold text-amber-300">
-                  <AlertTriangle className="w-4 h-4 text-amber-400" />
-                  <span>Privacy Guard Pre-Scan Warning</span>
-                </div>
-                <p className="text-[11px] text-amber-200/90">
-                  Detected potential identifying detail(s) in draft text:
-                </p>
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {detectedDraftFlags.map((flag, idx) => (
-                    <span key={idx} className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono text-[10px] border border-amber-500/30">
-                      ⚠️ {flag}
+              {identity && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="brut-label !mb-0 flex items-center gap-1.5">
+                      <KeyRound className="h-3.5 w-3.5" strokeWidth={2.75} />
+                      Public identity commitment
                     </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* STEP 3: ZK Proof Generation */}
-            <div className="space-y-3 pt-2">
-              <button
-                type="button"
-                onClick={handleGenerateProof}
-                disabled={isGeneratingProof || !isEnrolled || !content.trim()}
-                className={`w-full py-3 px-4 rounded-xl text-xs font-semibold border transition-all flex items-center justify-center space-x-2 ${!isEnrolled || !content.trim()
-                    ? 'bg-slate-800/50 text-slate-500 border-slate-700 cursor-not-allowed'
-                    : 'bg-violet-600/30 hover:bg-violet-600/40 text-violet-200 border-violet-500/40'
-                  }`}
-              >
-                {isGeneratingProof ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin text-violet-400" />
-                    <span>Generating Real Groth16 ZK Proof (SnarkJS)...</span>
-                  </>
-                ) : (
-                  <>
-                    <ShieldCheck className="w-4 h-4 text-violet-400" />
-                    <span>Generate Semaphore V4 ZK Membership Proof</span>
-                  </>
-                )}
-              </button>
-
-              {proofError && (
-                <div className="p-3 rounded-lg bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs flex items-center space-x-2">
-                  <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0" />
-                  <span>{proofError}</span>
+                    <button type="button" onClick={handleGenerateNewIdentity} className="brut-btn brut-btn-paper brut-btn-sm">
+                      <RotateCcw className="h-3 w-3" strokeWidth={3} />
+                      <span>Reset identity</span>
+                    </button>
+                  </div>
+                  <div className="brut-code select-all">{identity.commitment.toString()}</div>
                 </div>
               )}
 
-              {proofData && (
-                <div className="p-4 rounded-xl bg-slate-900/90 border border-emerald-500/30 space-y-2 text-xs">
-                  <div className="flex items-center justify-between text-emerald-400 font-semibold">
-                    <span className="flex items-center space-x-1.5">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Groth16 ZK Proof Generated Successfully</span>
-                    </span>
-                    <span className="text-[10px] font-mono text-slate-400">Depth: {proofData.merkleTreeDepth}</span>
+              {!isEnrolled ? (
+                <div className="space-y-3">
+                  <div>
+                    <label htmlFor="student-ticket" className="brut-label">Demo student ID / ticket</label>
+                    <input
+                      id="student-ticket"
+                      type="text"
+                      value={studentTicket}
+                      onChange={(e) => setStudentTicket(e.target.value)}
+                      className="brut-field"
+                      placeholder="e.g. STU-ALICE-101"
+                    />
                   </div>
 
-                  <div className="space-y-1">
-                    <div className="text-[11px] text-slate-400">Scope Nullifier:</div>
-                    <div className="p-2 rounded bg-slate-950 font-mono text-[10px] text-teal-300 break-all select-all border border-slate-800">
-                      {proofData.nullifier}
+                  <button
+                    type="button"
+                    onClick={handleEnroll}
+                    disabled={enrollLoading}
+                    className="brut-btn w-full py-3"
+                  >
+                    {enrollLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" strokeWidth={3} />
+                        <span>Authorizing commitment...</span>
+                      </>
+                    ) : (
+                      <>
+                        <UserCheck className="h-4 w-4" strokeWidth={2.75} />
+                        <span>Enroll commitment into the group</span>
+                      </>
+                    )}
+                  </button>
+
+                  {enrollError && (
+                    <div role="alert" className="flex items-start gap-2 border-[3px] border-ink bg-alarm p-3 text-xs font-bold">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" strokeWidth={2.75} />
+                      <span>{enrollError}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 border-[3px] border-ink bg-go p-3 text-xs font-bold">
+                  <CheckCircle2 className="h-4 w-4 flex-shrink-0" strokeWidth={3} />
+                  <span>Commitment is enrolled in the trusted Semaphore group ({groupCommitments.length} total members).</span>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* STEP 2-4: report form */}
+          <form onSubmit={handleSubmit} className="brut-card">
+            <StepHeader n={2} title="Report and scope" />
+
+            <div className="space-y-5 p-5">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="category" className="brut-label">Reporting category</label>
+                  <select
+                    id="category"
+                    value={category}
+                    onChange={(e) => {
+                      setCategory(e.target.value);
+                      setProofData(null);
+                    }}
+                    className="brut-field"
+                  >
+                    {CATEGORIES.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="period" className="brut-label">Reporting period</label>
+                  <select
+                    id="period"
+                    value={period}
+                    onChange={(e) => {
+                      setPeriod(e.target.value);
+                      setProofData(null);
+                    }}
+                    className="brut-field"
+                  >
+                    {PERIODS.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="report-content" className="brut-label">Feedback / report content</label>
+                <textarea
+                  id="report-content"
+                  rows={6}
+                  value={content}
+                  onChange={(e) => {
+                    setContent(e.target.value);
+                    setProofData(null);
+                  }}
+                  className="brut-field resize-y font-sans text-sm"
+                  placeholder="Describe your feedback, concern or recommendation. Do not include your name, student ID or personal email."
+                />
+              </div>
+
+              {/* Pre-scan warning */}
+              {detectedDraftFlags.length > 0 && (
+                <div role="alert" className="border-[3px] border-ink bg-signal">
+                  <div className="flex items-center gap-2 border-b-[3px] border-ink bg-ink px-3 py-2 text-signal">
+                    <AlertTriangle className="h-4 w-4" strokeWidth={2.75} />
+                    <span className="font-display text-xl uppercase tracking-wide">Privacy guard pre-scan</span>
+                  </div>
+                  <div className="space-y-2 p-3">
+                    <p className="text-xs font-medium">Possible identifying details found in your draft:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {detectedDraftFlags.map((flag, idx) => (
+                        <span key={idx} className="brut-tag">
+                          <AlertTriangle className="h-3 w-3" strokeWidth={3} />
+                          {flag}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 </div>
               )}
-            </div>
 
-            {/* STEP 4: Submit Button */}
-            <button
-              type="submit"
-              disabled={isSubmitting || !proofData}
-              className={`w-full py-3.5 px-6 rounded-xl text-white font-semibold text-sm transition-all shadow-lg flex items-center justify-center space-x-2 ${!proofData
-                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
-                  : 'bg-gradient-to-r from-violet-600 to-teal-500 hover:from-violet-500 hover:to-teal-400 shadow-violet-600/20'
-                }`}
-            >
-              {isSubmitting ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                  <span>Verifying Proof On Server...</span>
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  <span>Submit Anonymous Report</span>
-                </>
-              )}
-            </button>
+              {/* STEP 3: proof */}
+              <div className="space-y-3 border-t-[3px] border-dashed border-ink pt-5">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-8 w-8 items-center justify-center border-[3px] border-ink bg-signal font-display text-xl">3</span>
+                  <span className="font-display text-2xl uppercase tracking-wide">Zero-knowledge proof</span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleGenerateProof}
+                  disabled={isGeneratingProof || !isEnrolled || !content.trim()}
+                  className="brut-btn brut-btn-ink w-full py-3.5"
+                >
+                  {isGeneratingProof ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" strokeWidth={3} />
+                      <span>Generating Groth16 proof...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck className="h-4 w-4" strokeWidth={2.75} />
+                      <span>Generate membership proof</span>
+                    </>
+                  )}
+                </button>
+
+                {proofError && (
+                  <div role="alert" className="flex items-start gap-2 border-[3px] border-ink bg-alarm p-3 text-xs font-bold">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" strokeWidth={2.75} />
+                    <span>{proofError}</span>
+                  </div>
+                )}
+
+                {proofData && (
+                  <div className="border-[3px] border-ink bg-card">
+                    <div className="flex items-center justify-between gap-2 border-b-[3px] border-ink bg-go px-3 py-2">
+                      <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider">
+                        <CheckCircle2 className="h-4 w-4" strokeWidth={3} />
+                        Proof generated
+                      </span>
+                      <span className="font-mono text-[0.68rem] font-bold">Depth {proofData.merkleTreeDepth}</span>
+                    </div>
+                    <div className="space-y-1 p-3">
+                      <div className="brut-label !mb-1 flex items-center gap-1.5">
+                        <Fingerprint className="h-3.5 w-3.5" strokeWidth={2.75} />
+                        Scope nullifier
+                      </div>
+                      <div className="brut-code select-all">{proofData.nullifier}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* STEP 4: submit */}
+              <div className="space-y-3 border-t-[3px] border-dashed border-ink pt-5">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-8 w-8 items-center justify-center border-[3px] border-ink bg-signal font-display text-xl">4</span>
+                  <span className="font-display text-2xl uppercase tracking-wide">Send it</span>
+                </div>
+                <button type="submit" disabled={isSubmitting || !proofData} className="brut-btn brut-btn-xl w-full">
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-6 w-6 animate-spin" strokeWidth={3} />
+                      <span>Verifying proof...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-6 w-6" strokeWidth={2.75} />
+                      <span>Submit anonymous report</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </form>
 
-          {/* Submission Result */}
+          {/* Submission result */}
           {submissionResult && (
-            <div className={`p-6 rounded-2xl border ${submissionResult.status === 'success'
-                ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200'
-                : submissionResult.status === 'duplicate'
-                  ? 'bg-amber-950/40 border-amber-500/40 text-amber-200'
-                  : submissionResult.status === 'held'
-                    ? 'bg-violet-950/40 border-violet-500/40 text-violet-200'
-                    : 'bg-rose-950/40 border-rose-500/40 text-rose-200'
-              } space-y-3`}>
-              <div className="flex items-center space-x-2 text-base font-bold">
-                {submissionResult.status === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
-                {submissionResult.status === 'duplicate' && <ShieldAlert className="w-5 h-5 text-amber-400" />}
-                {submissionResult.status === 'held' && <EyeOff className="w-5 h-5 text-violet-400" />}
-                {submissionResult.status === 'error' && <AlertTriangle className="w-5 h-5 text-rose-400" />}
-                <span>
-                  {submissionResult.status === 'success' && 'Report Successfully Submitted (HTTP 201)'}
-                  {submissionResult.status === 'duplicate' && 'Duplicate Submission Blocked (HTTP 409 Conflict)'}
-                  {submissionResult.status === 'held' && 'Report Held for Privacy Sanitization Review'}
-                  {submissionResult.status === 'error' && 'Submission Error'}
+            <div
+              role="status"
+              aria-live="polite"
+              className={`border-[3px] border-ink shadow-hard ${
+                submissionResult.status === 'held' ? 'bg-paper' : 'bg-card'
+              }`}
+            >
+              <div
+                className={`flex items-center gap-3 border-b-[3px] border-ink px-4 py-3 ${
+                  submissionResult.status === 'success'
+                    ? 'bg-go'
+                    : submissionResult.status === 'duplicate'
+                      ? 'bg-signal'
+                      : submissionResult.status === 'held'
+                        ? 'bg-ink text-paper'
+                        : 'bg-alarm'
+                }`}
+              >
+                {submissionResult.status === 'success' && <CheckCircle2 className="h-6 w-6" strokeWidth={3} />}
+                {submissionResult.status === 'duplicate' && <ShieldAlert className="h-6 w-6" strokeWidth={3} />}
+                {submissionResult.status === 'held' && <EyeOff className="h-6 w-6" strokeWidth={3} />}
+                {submissionResult.status === 'error' && <AlertTriangle className="h-6 w-6" strokeWidth={3} />}
+                <span className="font-display text-3xl uppercase tracking-wide">
+                  {submissionResult.status === 'success' && 'Report submitted (HTTP 201)'}
+                  {submissionResult.status === 'duplicate' && 'Duplicate blocked (HTTP 409)'}
+                  {submissionResult.status === 'held' && 'Held for privacy review'}
+                  {submissionResult.status === 'error' && 'Submission error'}
                 </span>
               </div>
 
-              <p className="text-xs leading-relaxed">{submissionResult.message}</p>
-              {submissionResult.details?.txHash && (
-                <p className="mt-3 text-[11px] font-mono break-all text-slate-300">
-                  ⛓️ Verified on-chain (topic #{submissionResult.details.topicId}) · tx {submissionResult.details.txHash}
-                </p>
-              )}
+              <div className="space-y-3 p-4">
+                <p className="text-sm leading-relaxed">{submissionResult.message}</p>
+                {submissionResult.details?.txHash && (
+                  <div className="flex items-start gap-2 border-[3px] border-ink bg-ink p-3 font-mono text-[0.7rem] text-signal">
+                    <Link2 className="mt-0.5 h-4 w-4 flex-shrink-0" strokeWidth={2.75} />
+                    <span className="break-all">
+                      Verified on-chain (topic #{submissionResult.details.topicId}) / tx {submissionResult.details.txHash}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
 
-        {/* Sidebar (1 col) */}
-        <div className="space-y-6">
+        {/* Sidebar */}
+        <div className="space-y-8">
           <PrivacyWarning />
 
-          <div className="glass-card p-5 rounded-2xl border border-slate-800 space-y-3 text-xs">
-            <h3 className="font-semibold text-white text-sm flex items-center space-x-1.5">
-              <Lock className="w-4 h-4 text-teal-400" />
-              <span>Semaphore Cryptographic Proofs</span>
-            </h3>
-            <p className="text-slate-400 leading-relaxed">
-              Your browser generates a zero-knowledge proof proving membership in the college group without revealing your identity.
+          <aside className="brut-card-ink space-y-3 p-5 text-xs !shadow-hard">
+            <h2 className="flex items-center gap-2 font-display text-2xl uppercase tracking-wide text-signal">
+              <Lock className="h-5 w-5" strokeWidth={2.75} />
+              How the proof works
+            </h2>
+            <p className="leading-relaxed text-paper/85">
+              Your browser proves membership in the college group without revealing which member you are.
             </p>
-            <p className="text-slate-400 leading-relaxed">
-              The scope nullifier <code className="text-violet-300">H(Identity, Scope)</code> prevents duplicate submissions per scope while keeping your identity unlinkable across different scopes.
+            <p className="leading-relaxed text-paper/85">
+              The scope nullifier <code className="bg-signal px-1 font-mono text-ink">H(Identity, Scope)</code> blocks
+              duplicate submissions per scope while keeping your reports unlinkable across scopes.
             </p>
-          </div>
+          </aside>
         </div>
       </div>
     </div>
   );
 };
+
+const StepHeader: React.FC<{ n: number; title: string; right?: React.ReactNode }> = ({ n, title, right }) => (
+  <div className="flex items-stretch border-b-[3px] border-ink">
+    <div className="flex w-14 flex-shrink-0 items-center justify-center border-r-[3px] border-ink bg-signal font-display text-4xl">
+      {n}
+    </div>
+    <div className="flex flex-1 flex-wrap items-center justify-between gap-2 bg-ink px-4 py-3 text-paper">
+      <h2 className="font-display text-3xl uppercase tracking-wide">{title}</h2>
+      {right}
+    </div>
+  </div>
+);

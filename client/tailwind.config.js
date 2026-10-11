@@ -7,23 +7,33 @@ export default {
   theme: {
     extend: {
       colors: {
-        dark: {
-          950: '#090d16',
-          900: '#0f172a',
-          850: '#152037',
-          800: '#1e293b',
-          700: '#334155',
-        },
-        brand: {
-          violet: '#8b5cf6',
-          teal: '#14b8a6',
-          cyan: '#06b6d4',
-          accent: '#7c3aed',
-        },
+        paper: '#EFEBDD',   // page background
+        card: '#FBF8EE',    // card surface
+        ink: '#0B0B0B',     // borders, text, dark surfaces
+        signal: '#FFD23F',  // primary accent (yellow)
+        alarm: '#FF4D3D',   // errors, serious allegations
+        go: '#2FBF71',      // success
+        steel: '#3A3A36',   // secondary text on paper
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        mono: ['Fira Code', 'JetBrains Mono', 'monospace'],
+        display: ['"Bebas Neue"', 'Impact', 'Haettenschweiler', '"Arial Narrow Bold"', 'sans-serif'],
+        sans: ['"Space Grotesk"', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['"Space Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+      },
+      boxShadow: {
+        'hard-sm': '3px 3px 0 0 #0B0B0B',
+        hard: '6px 6px 0 0 #0B0B0B',
+        'hard-lg': '10px 10px 0 0 #0B0B0B',
+        'hard-signal': '8px 8px 0 0 #FFD23F',
+      },
+      keyframes: {
+        marquee: {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-50%)' },
+        },
+      },
+      animation: {
+        marquee: 'marquee 28s linear infinite',
       },
     },
   },

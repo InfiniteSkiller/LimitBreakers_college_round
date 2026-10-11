@@ -1,44 +1,64 @@
 import React from 'react';
-import { ShieldAlert, Info, Lock } from 'lucide-react';
+import { ShieldAlert, Lock, Eye, Network, Users } from 'lucide-react';
+
+const LIMITS = [
+  {
+    icon: Eye,
+    title: 'Contextual inference',
+    text: 'Unique incidents, exact timestamps or ultra-specific classroom details can identify you.',
+  },
+  {
+    icon: Network,
+    title: 'Colluding authorities',
+    text: 'IP tracking outside Tor or a VPN, or verifier and report servers comparing notes.',
+  },
+  {
+    icon: Users,
+    title: 'Small groups',
+    text: 'Groups under the minimum threshold of 3 contributors are suppressed from summaries.',
+  },
+];
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="border-t border-slate-800/80 bg-slate-950/90 text-slate-400 py-10 mt-20 text-xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Plain Language Anonymity Limitations Disclaimer */}
-        <div className="mb-8 p-4 rounded-xl bg-amber-950/20 border border-amber-500/20 text-amber-200/90">
-          <div className="flex items-start space-x-3">
-            <ShieldAlert className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <h4 className="font-semibold text-amber-300 text-sm mb-1">Anonymity & Privacy Limitations Disclaimer</h4>
-              <p className="text-amber-200/80 leading-relaxed text-xs">
-                Incognito protects your member identity using scope-bound nullifiers and zero-knowledge evidence structures. 
-                However, <strong>anonymity cannot be cryptographically guaranteed against:</strong>
-              </p>
-              <ul className="list-disc list-inside mt-1.5 space-y-1 text-amber-200/70 font-mono text-[11px]">
-                <li><strong>Contextual Inference:</strong> Writing highly unique incidents, exact timestamps, or ultra-specific classroom details.</li>
-                <li><strong>Colluding Authorities:</strong> Network-level IP tracking outside Tor/VPN or verifier/reporting service co-location correlation.</li>
-                <li><strong>Small Group Scope:</strong> Reports submitted within groups under the minimum privacy threshold (3 contributors) are suppressed.</li>
-              </ul>
-            </div>
+    <footer className="relative z-10 mt-24 border-t-[3px] border-ink bg-ink text-paper">
+      <div className="hazard h-4 border-b-[3px] border-ink" />
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        {/* Anonymity limits */}
+        <div className="border-[3px] border-paper bg-signal text-ink shadow-[8px_8px_0_0_#EFEBDD]">
+          <div className="flex items-center gap-3 border-b-[3px] border-ink bg-ink px-5 py-3 text-signal">
+            <ShieldAlert className="h-6 w-6" strokeWidth={2.5} />
+            <h2 className="font-display text-3xl uppercase tracking-wide">Read this: what anonymity does not cover</h2>
+          </div>
+          <div className="grid gap-4 p-5 md:grid-cols-3">
+            {LIMITS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.title} className="flex items-start gap-3">
+                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center border-[3px] border-ink bg-paper">
+                    <Icon className="h-4 w-4" strokeWidth={2.75} />
+                  </div>
+                  <div>
+                    <div className="font-mono text-xs font-bold uppercase tracking-wider">{item.title}</div>
+                    <p className="mt-1 text-xs leading-relaxed">{item.text}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-slate-500 text-[11px]">
-          <div className="flex items-center space-x-2">
-            <Lock className="w-3.5 h-3.5 text-violet-400" />
-            <span>Incognito Campus Anonymity Platform &bull; Prototype Version 1.0.0</span>
+        <div className="mt-8 flex flex-col items-start justify-between gap-4 font-mono text-[0.7rem] uppercase tracking-wider md:flex-row md:items-center">
+          <div className="flex items-center gap-2 text-signal">
+            <Lock className="h-4 w-4" strokeWidth={2.75} />
+            <span>Incognito campus anonymity platform / Prototype 1.0.0</span>
           </div>
-          <div className="flex items-center space-x-4">
-            <span className="text-slate-400">Simulated ZK Verifier Interface</span>
-            <span>&bull;</span>
-            <span className="text-slate-400">Scoped Nullifier Duplicate Guard</span>
-            <span>&bull;</span>
-            <span className="text-slate-400">Privacy Risk Gate</span>
+          <div className="flex flex-wrap gap-x-5 gap-y-1 text-paper/80">
+            <span>Semaphore V4 proofs</span>
+            <span>Scoped nullifier guard</span>
+            <span>Privacy risk gate</span>
           </div>
         </div>
-
       </div>
     </footer>
   );

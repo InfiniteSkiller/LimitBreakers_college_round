@@ -1,19 +1,33 @@
 import React from 'react';
-import { ShieldCheck, EyeOff, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, Ban, Clock, Fingerprint, Inbox } from 'lucide-react';
+
+const RULES = [
+  { icon: Ban, text: 'Do NOT include your name, student ID, email address or phone number.' },
+  { icon: Clock, text: 'Avoid exact dates, times, room numbers or small class sizes that could identify you.' },
+  { icon: Fingerprint, text: 'A scoped nullifier stops duplicate submissions while keeping your reports unlinkable across categories.' },
+  { icon: Inbox, text: 'Reports with possible identifiers go to a privacy-review queue for redaction.' },
+];
 
 export const PrivacyWarning: React.FC = () => {
   return (
-    <div className="p-4 rounded-xl bg-violet-950/30 border border-violet-500/20 text-slate-200 text-xs leading-relaxed space-y-2">
-      <div className="flex items-center space-x-2 text-violet-300 font-semibold text-sm">
-        <ShieldCheck className="w-4 h-4 text-violet-400" />
-        <span>Privacy Protection Rules Before Submitting</span>
+    <aside className="brut-card-yellow">
+      <div className="flex items-center gap-2 border-b-[3px] border-ink bg-ink px-4 py-2.5 text-signal">
+        <ShieldCheck className="h-5 w-5" strokeWidth={2.75} />
+        <h2 className="font-display text-2xl uppercase tracking-wide">Before you submit</h2>
       </div>
-      <ul className="space-y-1.5 text-slate-300 list-disc list-inside font-sans text-xs">
-        <li><strong>Do NOT include your name, student ID, email address, or phone number.</strong></li>
-        <li>Avoid specifying exact dates, times, room numbers, or small class group sizes that could identify you.</li>
-        <li>Your feedback is bound to a <strong>scoped nullifier</strong> — preventing duplicate submissions while keeping your report cryptographically un-linkable across categories.</li>
-        <li>Submissions with potential identifiers will be held in a <strong>privacy-review queue</strong> for sanitization.</li>
+      <ul className="space-y-3 p-4">
+        {RULES.map((rule, i) => {
+          const Icon = rule.icon;
+          return (
+            <li key={i} className="flex items-start gap-3 text-xs leading-relaxed">
+              <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center border-2 border-ink bg-paper">
+                <Icon className="h-3.5 w-3.5" strokeWidth={2.75} />
+              </span>
+              <span className="pt-0.5 font-medium">{rule.text}</span>
+            </li>
+          );
+        })}
       </ul>
-    </div>
+    </aside>
   );
 };

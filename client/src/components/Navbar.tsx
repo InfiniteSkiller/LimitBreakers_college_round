@@ -1,122 +1,119 @@
 import React from 'react';
-import { Shield, Lock, FileText, LayoutDashboard, BarChart3, ShieldCheck, Cpu } from 'lucide-react';
+import { Shield, Lock, FileText, LayoutDashboard, BarChart3, Cpu, ArrowUpRight, type LucideIcon } from 'lucide-react';
+
+type TabId = 'overview' | 'submit' | 'moderator' | 'insights' | 'security';
 
 interface NavbarProps {
-  activeTab: 'overview' | 'submit' | 'moderator' | 'insights' | 'security';
-  setActiveTab: (tab: 'overview' | 'submit' | 'moderator' | 'insights' | 'security') => void;
+  activeTab: TabId;
+  setActiveTab: (tab: TabId) => void;
   isBackendConnected: boolean;
   isModeratorAuthenticated: boolean;
 }
 
 interface NavItem {
-  id: 'overview' | 'submit' | 'moderator' | 'insights' | 'security';
+  id: TabId;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  badge?: string;
+  icon: LucideIcon;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({
-  activeTab,
-  setActiveTab,
-  isBackendConnected,
-  isModeratorAuthenticated,
-}) => {
-  const navItems: NavItem[] = [
-    { id: 'overview', label: 'Overview', icon: Shield },
-    { id: 'submit', label: 'Submit Report', icon: FileText },
-    { id: 'moderator', label: 'Moderator Portal', icon: LayoutDashboard, badge: isModeratorAuthenticated ? 'Auth' : undefined },
-    { id: 'insights', label: 'Recipient Insights', icon: BarChart3 },
-    { id: 'security', label: 'Security & Architecture', icon: Cpu },
-  ];
+const NAV_ITEMS: NavItem[] = [
+  { id: 'overview', label: 'Overview', icon: Shield },
+  { id: 'submit', label: 'Submit', icon: FileText },
+  { id: 'moderator', label: 'Moderate', icon: LayoutDashboard },
+  { id: 'insights', label: 'Insights', icon: BarChart3 },
+  { id: 'security', label: 'Security', icon: Cpu },
+];
 
+export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, isBackendConnected }) => {
   return (
-    <header className="sticky top-0 z-50 glass-panel border-b border-slate-800/80 bg-slate-950/80">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          
-          {/* Logo & Identity */}
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('overview')}>
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-violet-600 via-indigo-500 to-teal-400 p-0.5 shadow-lg shadow-violet-500/20">
-              <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                <Shield className="w-5 h-5 text-teal-400" />
-              </div>
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="font-extrabold text-lg tracking-wider gradient-text font-mono">INCOGNITO</span>
-                <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-300 border border-violet-500/20">
-                  Prototype 1
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 -mt-0.5">Zero-Knowledge Campus Feedback</p>
-            </div>
-          </div>
+    <header className="sticky top-0 z-50 border-b-[3px] border-ink bg-paper">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-[68px] items-center justify-between gap-4">
+          {/* Logo */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('overview')}
+            className="group flex items-center gap-3 text-left"
+            aria-label="Incognito home"
+          >
+            <span className="flex h-11 w-11 items-center justify-center border-[3px] border-ink bg-signal shadow-hard-sm transition-transform group-hover:-rotate-6">
+              <Shield className="h-6 w-6 text-ink" strokeWidth={2.75} />
+            </span>
+            <span className="flex flex-col">
+              <span className="font-display text-4xl leading-none tracking-wide">INCOGNITO</span>
+              <span className="brut-label !mb-0 !text-[0.6rem] text-steel">Campus feedback / Proto 1</span>
+            </span>
+          </button>
 
-          {/* Navigation Links */}
-          <nav className="hidden md:flex items-center space-x-1">
-            {navItems.map((item) => {
+          {/* Desktop nav */}
+          <nav className="hidden items-center gap-2 lg:flex" aria-label="Main">
+            {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
               return (
                 <button
                   key={item.id}
+                  type="button"
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center space-x-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-all ${
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`flex items-center gap-2 border-[3px] px-3 py-2 font-mono text-xs font-bold uppercase tracking-wider transition-[transform,box-shadow,background-color] duration-100 ${
                     isActive
-                      ? 'bg-violet-600/20 text-violet-300 border border-violet-500/30 shadow-sm shadow-violet-500/10'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                      ? 'border-ink bg-signal shadow-hard-sm'
+                      : 'border-transparent hover:border-ink hover:bg-ink hover:text-paper'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-violet-400' : 'text-slate-400'}`} />
+                  <Icon className="h-4 w-4" strokeWidth={2.5} />
                   <span>{item.label}</span>
-                  {item.badge && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono">
-                      {item.badge}
-                    </span>
-                  )}
                 </button>
               );
             })}
           </nav>
 
-          {/* System Status Indicators */}
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2 px-2.5 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-[11px]">
-              <span className={`w-2 h-2 rounded-full ${isBackendConnected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
-              <span className="text-slate-300 font-mono">{isBackendConnected ? 'API Live' : 'Offline'}</span>
-            </div>
-            
-            <button
-              onClick={() => setActiveTab('submit')}
-              className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-medium text-xs px-3.5 py-2 rounded-lg shadow-md shadow-violet-600/20 transition-all flex items-center space-x-1.5"
+          {/* Status + CTA */}
+          <div className="flex items-center gap-3">
+            <div
+              className={`brut-tag ${isBackendConnected ? 'brut-tag-go' : 'brut-tag-alarm'}`}
+              role="status"
+              aria-live="polite"
             >
-              <Lock className="w-3.5 h-3.5" />
-              <span>Report Anonymously</span>
+              <span className={`h-2 w-2 bg-ink ${isBackendConnected ? 'animate-pulse' : ''}`} />
+              <span>{isBackendConnected ? 'API live' : 'Offline'}</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('submit')}
+              className="brut-btn brut-btn-ink hidden xl:inline-flex"
+            >
+              <Lock className="h-4 w-4" strokeWidth={2.75} />
+              <span>Report anonymously</span>
+              <ArrowUpRight className="h-4 w-4" strokeWidth={2.75} />
             </button>
           </div>
-
         </div>
       </div>
 
-      {/* Mobile Nav Bar */}
-      <div className="md:hidden flex overflow-x-auto px-4 py-2 border-t border-slate-800/60 space-x-2 bg-slate-950/90">
-        {navItems.map((item) => {
+      {/* Mobile / tablet nav */}
+      <nav className="flex gap-2 overflow-x-auto border-t-[3px] border-ink bg-card px-4 py-2 lg:hidden" aria-label="Main (compact)">
+        {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
           return (
             <button
               key={item.id}
+              type="button"
               onClick={() => setActiveTab(item.id)}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs whitespace-nowrap ${
-                isActive ? 'bg-violet-600/30 text-violet-200 border border-violet-500/40' : 'text-slate-400'
+              aria-current={isActive ? 'page' : undefined}
+              className={`flex flex-shrink-0 items-center gap-1.5 border-2 border-ink px-3 py-1.5 font-mono text-[0.7rem] font-bold uppercase tracking-wider ${
+                isActive ? 'bg-signal shadow-hard-sm' : 'bg-paper'
               }`}
             >
-              <Icon className="w-3.5 h-3.5" />
+              <Icon className="h-3.5 w-3.5" strokeWidth={2.5} />
               <span>{item.label}</span>
             </button>
           );
         })}
-      </div>
+      </nav>
     </header>
   );
 };
