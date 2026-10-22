@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { ReportService } from '../services/reportService.js';
 import { defaultDb } from '../db/database.js';
+import { EnrollmentService } from '../services/enrollmentService.js';
 
 const MODERATOR_TOKEN = process.env.MODERATOR_SECRET_TOKEN || 'moderator-secret-token-2026';
 
@@ -11,7 +12,8 @@ const updateReportSchema = z.object({
 });
 
 export async function adminRoutes(fastify: FastifyInstance, opts: { reportService?: ReportService }) {
-  const reportService = opts.reportService || new ReportService(defaultDb);
+  const reportService = opts.reportService ||
+    new ReportService(defaultDb, new EnrollmentService(defaultDb));
 
   // Moderator Auth Middleware hook
   fastify.addHook('preHandler', async (request, reply) => {

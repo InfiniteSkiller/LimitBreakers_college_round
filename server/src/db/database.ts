@@ -44,6 +44,18 @@ export function createDatabase(dbPath?: string) {
       updated_at TEXT NOT NULL
     );
 
+    -- Maps the human-readable scope ("teaching:2026-Q4") to the numeric
+    -- on-chain topic ID that every proof for that scope must be bound to.
+    CREATE TABLE IF NOT EXISTS topics (
+      scope_id TEXT NOT NULL,
+      deployment_key TEXT NOT NULL, -- reporting contract + group; a redeploy invalidates old topic IDs
+      topic_id INTEGER NOT NULL,
+      tx_hash TEXT,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (scope_id, deployment_key),
+      UNIQUE (deployment_key, topic_id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_enrollments_commitment ON enrollments(identity_commitment);
     CREATE INDEX IF NOT EXISTS idx_reports_category ON reports(category);
     CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
@@ -51,7 +63,22 @@ export function createDatabase(dbPath?: string) {
     CREATE INDEX IF NOT EXISTS idx_nullifiers_scope_nullifier ON nullifiers(scope_id, nullifier);
   `);
 
+  migrate(db);
+
   return db;
+}
+
+function addColumnIfMissing(db: Database.Database, table: string, column: string, ddl: string) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+  }
+}
+
+// Lightweight migrations so existing incognito.db files keep working.
+function migrate(db: Database.Database) {
+  addColumnIfMissing(db, 'reports', 'tx_hash', 'TEXT');
+  addColumnIfMissing(db, 'reports', 'topic_id', 'INTEGER');
 }
 
 // Default singleton for app runtime

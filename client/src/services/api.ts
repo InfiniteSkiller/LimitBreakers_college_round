@@ -3,9 +3,20 @@ export interface SubmitReportResponse {
   status?: string;
   privacyFlags?: string[];
   isSeriousAllegation?: boolean;
+  txHash?: string;
+  topicId?: number;
   message?: string;
   error?: string;
   statusCode?: number;
+}
+
+export interface ResolvedTopic {
+  scopeId: string;
+  /** On-chain topic ID, or null when the backend runs without a blockchain. */
+  topicId: number | null;
+  /** The exact value the Semaphore proof's `scope` must be set to. */
+  proofScope: string;
+  txHash?: string;
 }
 
 export interface ReportItem {
@@ -24,7 +35,7 @@ export interface ReportItem {
 export interface FeedbackSummaryItem {
   category: string;
   scopeId: string;
-  totalContributors: number;
+  totalContributors: number | null;
   thresholdMet: boolean;
   minThreshold: number;
   sanitizedExcerpts?: string[];
@@ -67,6 +78,20 @@ export async function fetchGroupState(): Promise<GroupStateResponse> {
   const data = await res.json();
   if (!res.ok) {
     throw new Error(data.error || 'Failed to fetch group state');
+  }
+  return data;
+}
+
+/**
+ * Ask the backend which `scope` to prove against for this category:period.
+ * With the blockchain enabled this is the numeric on-chain topic ID (the
+ * contract rejects any other scope); otherwise it is the legacy hashed scope.
+ */
+export async function resolveTopic(scopeId: string): Promise<ResolvedTopic> {
+  const res = await fetch(`${API_BASE}/topics/resolve?scopeId=${encodeURIComponent(scopeId)}`);
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to resolve reporting topic');
   }
   return data;
 }

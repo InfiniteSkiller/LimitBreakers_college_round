@@ -23,7 +23,7 @@ export async function enrollmentRoutes(fastify: FastifyInstance, opts: { enrollm
     }
 
     const { studentTicket, identityCommitment } = parseResult.data;
-    const result = enrollmentService.enrollCommitment(studentTicket, identityCommitment);
+    const result = await enrollmentService.enrollAndSync(studentTicket, identityCommitment);
 
     if (!result.success) {
       return reply.status(400).send({ error: result.error });
@@ -32,6 +32,7 @@ export async function enrollmentRoutes(fastify: FastifyInstance, opts: { enrollm
     return reply.status(200).send({
       success: true,
       commitment: result.commitment,
+      txHash: result.txHash,
       message: 'Identity commitment successfully enrolled in the Semaphore group.',
     });
   });

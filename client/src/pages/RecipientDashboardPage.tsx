@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { fetchFeedbackSummary, FeedbackSummaryItem } from '../services/api';
-import { BarChart3, ShieldCheck, Lock, AlertOctagon, Filter, CheckCircle2, RefreshCw } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { PageHeader } from '../components/PageHeader';
+import { BarChart3, ShieldCheck, Lock, AlertOctagon, Filter, CheckCircle2, RefreshCw, Quote } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
 
 export const RecipientDashboardPage: React.FC = () => {
   const [summaries, setSummaries] = useState<FeedbackSummaryItem[]>([]);
@@ -24,142 +25,160 @@ export const RecipientDashboardPage: React.FC = () => {
     loadSummaries();
   }, [selectedCategory]);
 
-  // Transform summaries for chart visualization
-  const chartData = summaries.map((s) => ({
-    name: `${s.category} (${s.scopeId})`,
-    contributors: s.totalContributors,
-    thresholdMet: s.thresholdMet,
-    category: s.category,
-  }));
+  // Privacy protection: only chart exact counts once the scope threshold is met.
+  const chartData = summaries
+    .filter((s) => s.thresholdMet && s.totalContributors !== null)
+    .map((s) => ({
+      name: `${s.category} ${s.scopeId.split(':')[1] ?? ''}`.trim(),
+      scopeId: s.scopeId,
+      contributors: s.totalContributors as number,
+      thresholdMet: s.thresholdMet,
+      category: s.category,
+    }));
 
   return (
     <div className="space-y-8 py-4">
-      
-      {/* Header Banner */}
-      <div className="glass-panel p-6 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="p-2.5 rounded-xl bg-teal-600/20 text-teal-400 border border-teal-500/30">
-            <BarChart3 className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Feedback Recipient Dashboard</h1>
-            <p className="text-slate-400 text-xs">
-              Aggregated institutional feedback feed. Micro-targeting protection active.
-            </p>
-          </div>
-        </div>
-
-        {/* Category Filter */}
-        <div className="flex items-center space-x-2">
-          <Filter className="w-3.5 h-3.5 text-slate-400" />
+      <PageHeader
+        icon={BarChart3}
+        kicker="Recipient dashboard"
+        title="Aggregated feedback"
+        description="Institutional feedback summaries with micro-targeting protection switched on."
+      >
+        <div className="flex items-center gap-3">
+          <label htmlFor="category-filter" className="sr-only">Filter by category</label>
+          <Filter className="h-4 w-4 text-signal" strokeWidth={2.75} aria-hidden="true" />
           <select
+            id="category-filter"
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-3 py-1.5 rounded-lg glass-input text-xs"
+            className="brut-field !w-auto min-w-[12rem]"
           >
-            <option value="all" className="bg-slate-900">All Categories</option>
-            <option value="teaching" className="bg-slate-900">Teaching & Academics</option>
-            <option value="facilities" className="bg-slate-900">Campus Facilities</option>
-            <option value="administration" className="bg-slate-900">Administration</option>
-            <option value="welfare" className="bg-slate-900">Student Welfare</option>
-            <option value="safety" className="bg-slate-900">Campus Safety</option>
+            <option value="all">All categories</option>
+            <option value="teaching">Teaching & Academics</option>
+            <option value="facilities">Campus Facilities</option>
+            <option value="administration">Administration</option>
+            <option value="welfare">Student Welfare</option>
+            <option value="safety">Campus Safety</option>
           </select>
-          <button
-            onClick={loadSummaries}
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all"
-            title="Refresh dashboard"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+          <button type="button" onClick={loadSummaries} className="brut-btn brut-btn-sm" aria-label="Refresh dashboard">
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} strokeWidth={3} />
           </button>
         </div>
-      </div>
+      </PageHeader>
 
-      {/* Threshold Privacy Banner */}
-      <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-slate-300 flex items-center space-x-3">
-        <ShieldCheck className="w-5 h-5 text-teal-400 flex-shrink-0" />
-        <p className="leading-relaxed">
-          <strong>Differential Threshold Privacy Protection:</strong> Results are automatically suppressed unless at least <strong>3 verified contributors</strong> have submitted feedback in the exact same scope. This prevents department heads from identifying individuals in small groups.
+      {/* Threshold banner */}
+      <div className="brut-card-yellow flex items-start gap-3 p-4 !shadow-hard-sm">
+        <ShieldCheck className="mt-0.5 h-6 w-6 flex-shrink-0" strokeWidth={2.75} />
+        <p className="text-sm leading-relaxed">
+          <strong className="uppercase tracking-wider">Minimum-contributor threshold.</strong> Results stay hidden unless
+          at least <strong>3 verified contributors</strong> submitted feedback in the exact same scope. This stops
+          department heads from picking out individuals in small groups.
         </p>
       </div>
 
-      {/* Recharts Analytics Chart */}
+      {/* Chart */}
       {chartData.length > 0 && (
-        <div className="glass-card p-6 rounded-2xl border border-slate-800 space-y-4">
-          <h3 className="font-bold text-white text-sm">Contributor Volume & Threshold Status</h3>
+        <section className="brut-card">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b-[3px] border-ink bg-ink px-5 py-3 text-paper">
+            <h2 className="font-display text-3xl uppercase tracking-wide">Contributor volume</h2>
+            <div className="flex items-center gap-4 font-mono text-[0.68rem] font-bold uppercase tracking-wider">
+              <span className="flex items-center gap-2"><span className="h-3 w-3 border-2 border-paper bg-go" />Threshold met</span>
+              <span className="flex items-center gap-2"><span className="h-3 w-3 border-2 border-paper bg-alarm" />Suppressed</span>
+            </div>
+          </div>
 
-          <div className="h-64 w-full pt-4">
+          <div className="h-72 w-full p-4">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
-                <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={11} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.5rem', color: '#f8fafc', fontSize: '12px' }}
+              <BarChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
+                <CartesianGrid stroke="#0B0B0B" strokeOpacity={0.15} strokeDasharray="4 4" vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  stroke="#0B0B0B"
+                  tickLine={false}
+                  axisLine={{ strokeWidth: 3 }}
+                  tick={{ fontSize: 11, fontFamily: '"Space Mono", monospace', fill: '#0B0B0B' }}
                 />
-                <Bar dataKey="contributors" radius={[6, 6, 0, 0]}>
+                <YAxis
+                  stroke="#0B0B0B"
+                  allowDecimals={false}
+                  tickLine={false}
+                  axisLine={{ strokeWidth: 3 }}
+                  tick={{ fontSize: 11, fontFamily: '"Space Mono", monospace', fill: '#0B0B0B' }}
+                />
+                <Tooltip
+                  cursor={{ fill: 'rgba(255, 210, 63, 0.35)' }}
+                  labelFormatter={(_label, payload) => (payload?.[0]?.payload?.scopeId as string) ?? ''}
+                  contentStyle={{
+                    backgroundColor: '#FBF8EE',
+                    border: '3px solid #0B0B0B',
+                    borderRadius: 0,
+                    boxShadow: '4px 4px 0 0 #0B0B0B',
+                    color: '#0B0B0B',
+                    fontFamily: '"Space Mono", monospace',
+                    fontSize: '12px',
+                  }}
+                />
+                <Bar dataKey="contributors" maxBarSize={90}>
                   {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.thresholdMet ? '#14b8a6' : '#f43f5e'} />
+                    <Cell key={`cell-${index}`} fill={entry.thresholdMet ? '#2FBF71' : '#FF4D3D'} stroke="#0B0B0B" strokeWidth={3} />
                   ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Summary Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {summaries.map((summary, idx) => (
-          <div
-            key={idx}
-            className={`glass-card p-6 rounded-2xl border transition-all space-y-4 ${
-              summary.thresholdMet
-                ? 'border-emerald-500/30 hover:border-emerald-500/50'
-                : 'border-rose-500/30 bg-rose-950/10'
-            }`}
-          >
-            <div className="flex items-center justify-between">
+          <article key={idx} className="brut-card overflow-hidden">
+            <div
+              className={`flex flex-wrap items-center justify-between gap-2 border-b-[3px] border-ink px-4 py-3 ${
+                summary.thresholdMet ? 'bg-go' : 'bg-alarm'
+              }`}
+            >
               <div>
-                <span className="font-bold text-white text-sm uppercase tracking-wide">
-                  {summary.category}
-                </span>
-                <div className="text-slate-400 text-xs font-mono">Scope: {summary.scopeId}</div>
+                <h3 className="font-display text-3xl uppercase leading-none tracking-wide">{summary.category}</h3>
+                <div className="mt-1 font-mono text-[0.7rem] font-bold">Scope: {summary.scopeId}</div>
               </div>
 
               {summary.thresholdMet ? (
-                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center space-x-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Threshold Met ({summary.totalContributors} Contributors)</span>
+                <span className="brut-tag">
+                  <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={3} />
+                  Met / {summary.totalContributors === null ? `threshold ${summary.minThreshold}+` : `${summary.totalContributors} contributors`}
                 </span>
               ) : (
-                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center space-x-1">
-                  <AlertOctagon className="w-3.5 h-3.5 text-rose-400" />
-                  <span>Suppressed ({summary.totalContributors}/3 Minimum)</span>
+                <span className="brut-tag">
+                  <AlertOctagon className="h-3.5 w-3.5" strokeWidth={3} />
+                  Suppressed / minimum {summary.minThreshold} required
                 </span>
               )}
             </div>
 
-            {/* Threshold Excerpts vs Suppressed Box */}
-            {summary.thresholdMet ? (
-              <div className="space-y-2">
-                <div className="text-[11px] font-semibold text-slate-300">Sanitized Feedback Excerpts:</div>
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {summary.sanitizedExcerpts?.map((excerpt, i) => (
-                    <div key={i} className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-slate-200 text-xs leading-relaxed font-sans">
-                      "{excerpt}"
-                    </div>
-                  ))}
+            <div className="p-4">
+              {summary.thresholdMet ? (
+                <div className="space-y-3">
+                  <div className="brut-label !mb-0">Sanitized feedback excerpts</div>
+                  <div className="max-h-52 space-y-3 overflow-y-auto pr-1">
+                    {summary.sanitizedExcerpts?.map((excerpt, i) => (
+                      <div key={i} className="brut-inset flex gap-3 p-3 text-sm leading-relaxed">
+                        <Quote className="mt-0.5 h-4 w-4 flex-shrink-0" strokeWidth={2.75} />
+                        <span>{excerpt}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="p-4 rounded-xl bg-rose-950/30 border border-rose-500/20 text-rose-200/90 text-xs leading-relaxed flex items-start space-x-2">
-                <Lock className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
-                <span>{summary.message}</span>
-              </div>
-            )}
-          </div>
+              ) : (
+                <div className="flex items-start gap-3 border-[3px] border-dashed border-ink p-4 text-sm leading-relaxed">
+                  <Lock className="mt-0.5 h-5 w-5 flex-shrink-0" strokeWidth={2.75} />
+                  <span>{summary.message}</span>
+                </div>
+              )}
+            </div>
+          </article>
         ))}
       </div>
-
     </div>
   );
 };

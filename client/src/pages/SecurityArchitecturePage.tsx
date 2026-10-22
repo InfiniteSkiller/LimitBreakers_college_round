@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Cpu, Lock, ShieldCheck, CheckCircle2, AlertTriangle, Key, Layers, ArrowRight } from 'lucide-react';
+import { PageHeader } from '../components/PageHeader';
+import { Cpu, Key, Layers, CheckCircle2, AlertTriangle, ArrowRight, Fingerprint, ServerCog, EyeOff, BarChart3, Link2 } from 'lucide-react';
 
 export const SecurityArchitecturePage: React.FC = () => {
   // Live Interactive Nullifier Sandbox state
@@ -23,189 +24,231 @@ export const SecurityArchitecturePage: React.FC = () => {
   const nullifierScopeA = computeSimpleHash(sandboxSecret, sandboxScope);
   const nullifierScopeB = computeSimpleHash(sandboxSecret, sandboxScopeB);
 
+  const STEPS = [
+    {
+      icon: Fingerprint,
+      title: 'Browser identity',
+      text: 'The browser generates a Semaphore V4 identity and submits only the public commitment for authorization.',
+      note: 'Secret stays local',
+      noteTone: 'brut-tag-go',
+    },
+    {
+      icon: Cpu,
+      title: 'Groth16 prover',
+      text: 'Computes a Groth16 proof and the scoped nullifier using WASM in the browser.',
+      note: 'Real ZK proof, depth 16',
+      noteTone: 'brut-tag-signal',
+    },
+    {
+      icon: ServerCog,
+      title: 'Server verifier',
+      text: 'Checks the proof against the group Merkle root and enforces UNIQUE(scope_id, nullifier). Optionally re-verified by the Semaphore contract on-chain.',
+      note: 'Cryptographically verified',
+      noteTone: 'brut-tag-ink',
+    },
+    {
+      icon: EyeOff,
+      title: 'Privacy risk gate',
+      text: 'Scans report text for direct identifiers and contextual dates or rooms, then classifies the status.',
+      note: 'Auto redact / hold',
+      noteTone: 'brut-tag-signal',
+    },
+    {
+      icon: BarChart3,
+      title: 'Threshold aggregator',
+      text: 'Suppresses results when contributors are under 3 and shows category trends to recipients.',
+      note: 'Min 3 members',
+      noteTone: 'brut-tag-go',
+    },
+  ];
+
+  const CONTROLS: { name: string; status: string; tone: 'ok' | 'warn' | 'opt'; detail: string }[] = [
+    {
+      name: 'Zero-knowledge proofs',
+      status: 'Real Semaphore V4 (SnarkJS / Groth16)',
+      tone: 'ok',
+      detail: 'Groth16 proof generated on the client and verified server-side against the Merkle root.',
+    },
+    {
+      name: 'Scoped duplicate prevention',
+      status: 'Implemented (DB constraint)',
+      tone: 'ok',
+      detail: 'Enforced via a database unique key on (scope_id, nullifier).',
+    },
+    {
+      name: 'Privacy risk gate',
+      status: 'Implemented (regex and rules)',
+      tone: 'ok',
+      detail: 'Flags direct IDs, dates, rooms and serious allegations.',
+    },
+    {
+      name: 'Threshold aggregation',
+      status: 'Implemented (3+ members)',
+      tone: 'ok',
+      detail: 'Suppresses summary metrics under the minimum contributor count.',
+    },
+    {
+      name: 'On-chain verification',
+      status: 'Optional (CHAIN_ENABLED)',
+      tone: 'opt',
+      detail: 'When enabled, the Semaphore contract also verifies the proof and records the nullifier per topic. Report text never goes on-chain.',
+    },
+    {
+      name: 'IP and network anonymity',
+      status: 'Not covered (local transport)',
+      tone: 'warn',
+      detail: 'Residual risk: IP addresses need Tor onion routing or blind relay proxies.',
+    },
+  ];
+
   return (
     <div className="space-y-12 py-4">
-      
-      {/* Header */}
-      <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-2">
-        <div className="flex items-center space-x-3">
-          <div className="p-2.5 rounded-xl bg-violet-600/20 text-violet-400 border border-violet-500/30">
-            <Cpu className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Security & Cryptographic Architecture</h1>
-            <p className="text-slate-400 text-xs">
-              De-coupling student identity from report content using Semaphore V4 ZK membership proofs and privacy-risk classification.
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        icon={Cpu}
+        kicker="Under the hood"
+        title="Security & architecture"
+        description="Decoupling student identity from report content with Semaphore V4 membership proofs and privacy-risk classification."
+      />
 
-      {/* Visual System Flow Diagram */}
-      <section className="glass-card p-6 sm:p-8 rounded-2xl border border-slate-800 space-y-6">
-        <h2 className="text-lg font-bold text-white flex items-center space-x-2">
-          <Layers className="w-5 h-5 text-teal-400" />
-          <span>End-to-End Privacy Dataflow Architecture</span>
+      {/* Dataflow */}
+      <section className="space-y-5">
+        <h2 className="flex items-center gap-3 font-display text-4xl uppercase tracking-wide sm:text-5xl">
+          <Layers className="h-8 w-8" strokeWidth={2.5} />
+          End-to-end dataflow
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 text-xs">
-          
-          {/* Step 1 */}
-          <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2 relative">
-            <span className="w-5 h-5 rounded-full bg-violet-600 text-white flex items-center justify-center font-mono font-bold text-[10px]">1</span>
-            <div className="font-semibold text-slate-200">Browser Identity Creation</div>
-            <p className="text-slate-400 text-[11px]">
-              Browser generates a Semaphore V4 identity. Submits only public commitment for authorization.
-            </p>
-            <div className="text-[10px] text-emerald-400 font-mono">Secret stays local</div>
-          </div>
-
-          {/* Step 2 */}
-          <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
-            <span className="w-5 h-5 rounded-full bg-violet-600 text-white flex items-center justify-center font-mono font-bold text-[10px]">2</span>
-            <div className="font-semibold text-slate-200">Semaphore Groth16 ZK Prover</div>
-            <p className="text-slate-400 text-[11px]">
-              Computes Groth16 proof & scoped nullifier <code className="text-teal-300">H(Identity, Scope)</code> using WASM.
-            </p>
-            <div className="text-[10px] text-teal-300 font-mono">Real ZK Proof (Depth 16)</div>
-          </div>
-
-          {/* Step 3 */}
-          <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
-            <span className="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center font-mono font-bold text-[10px]">3</span>
-            <div className="font-semibold text-slate-200">Server Proof & Root Verifier</div>
-            <p className="text-slate-400 text-[11px]">
-              Verifies proof against server group Merkle root & checks <code className="text-violet-300">UNIQUE(scope_id, nullifier)</code>.
-            </p>
-            <div className="text-[10px] text-violet-300 font-mono">Cryptographically Verified</div>
-          </div>
-
-          {/* Step 4 */}
-          <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
-            <span className="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center font-mono font-bold text-[10px]">4</span>
-            <div className="font-semibold text-slate-200">Privacy Risk Gate</div>
-            <p className="text-slate-400 text-[11px]">
-              Scans report text for direct identifiers & contextual dates/rooms. Classifies status.
-            </p>
-            <div className="text-[10px] text-amber-300 font-mono">Auto Redact / Hold</div>
-          </div>
-
-          {/* Step 5 */}
-          <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
-            <span className="w-5 h-5 rounded-full bg-teal-600 text-white flex items-center justify-center font-mono font-bold text-[10px]">5</span>
-            <div className="font-semibold text-slate-200">Threshold Aggregator</div>
-            <p className="text-slate-400 text-[11px]">
-              Suppresses results when contributors &lt; 3. Displays category trends to recipients.
-            </p>
-            <div className="text-[10px] text-emerald-300 font-mono">Min &ge; 3 Members</div>
-          </div>
-
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-5">
+          {STEPS.map((step, i) => {
+            const Icon = step.icon;
+            return (
+              <article key={step.title} className="brut-card relative flex flex-col gap-3 p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex h-11 w-11 items-center justify-center border-[3px] border-ink bg-ink text-signal">
+                    <Icon className="h-5 w-5" strokeWidth={2.75} />
+                  </div>
+                  <span className="font-display text-5xl leading-none opacity-30">{i + 1}</span>
+                </div>
+                <h3 className="font-display text-2xl uppercase leading-none tracking-wide">{step.title}</h3>
+                <p className="flex-1 text-xs leading-relaxed text-steel">{step.text}</p>
+                <span className={`brut-tag self-start ${step.noteTone}`}>{step.note}</span>
+                {i < STEPS.length - 1 && (
+                  <ArrowRight
+                    className="absolute -right-[1.35rem] top-1/2 z-10 hidden h-6 w-6 -translate-y-1/2 xl:block"
+                    strokeWidth={3.5}
+                    aria-hidden="true"
+                  />
+                )}
+              </article>
+            );
+          })}
         </div>
       </section>
 
-      {/* Interactive Nullifier Sandbox */}
-      <section className="glass-card p-6 rounded-2xl border border-slate-800 space-y-4">
-        <div className="flex items-center space-x-2 text-white font-bold text-base">
-          <Key className="w-5 h-5 text-violet-400" />
-          <span>Interactive Scoped Nullifier Math Sandbox</span>
-        </div>
-        <p className="text-slate-400 text-xs">
-          Test how the same member secret generates completely distinct, un-linkable nullifiers across different scopes while staying deterministic within the same scope.
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs pt-2">
-          <div>
-            <label className="block text-slate-300 font-medium mb-1">Member Secret Key</label>
-            <input
-              type="text"
-              value={sandboxSecret}
-              onChange={(e) => setSandboxSecret(e.target.value)}
-              className="w-full p-2.5 rounded-lg glass-input font-mono text-xs"
-            />
-          </div>
-
-          <div>
-            <label className="block text-slate-300 font-medium mb-1">Scope A (Teaching)</label>
-            <input
-              type="text"
-              value={sandboxScope}
-              onChange={(e) => setSandboxScope(e.target.value)}
-              className="w-full p-2.5 rounded-lg glass-input font-mono text-xs"
-            />
-          </div>
-
-          <div>
-            <label className="block text-slate-300 font-medium mb-1">Scope B (Facilities)</label>
-            <input
-              type="text"
-              value={sandboxScopeB}
-              onChange={(e) => setSandboxScopeB(e.target.value)}
-              className="w-full p-2.5 rounded-lg glass-input font-mono text-xs"
-            />
-          </div>
+      {/* Nullifier illustration */}
+      <section className="brut-card">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b-[3px] border-ink bg-ink px-5 py-3 text-paper">
+          <h2 className="flex items-center gap-2 font-display text-3xl uppercase tracking-wide">
+            <Key className="h-6 w-6 text-signal" strokeWidth={2.75} />
+            Scoped nullifier sandbox
+          </h2>
+          <span className="brut-tag brut-tag-signal">Illustration only</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-          <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-            <div className="text-[11px] text-slate-400 font-mono">Nullifier for Scope A ({sandboxScope}):</div>
-            <div className="font-mono text-teal-300 text-xs break-all">{nullifierScopeA}</div>
+        <div className="space-y-5 p-5">
+          <p className="max-w-3xl text-sm leading-relaxed text-steel">
+            This is a visual-only toy example to explain scope binding. The values below are NOT real Semaphore nullifiers,
+            are not cryptographically secure, and do not provide unlinkability. Real nullifiers are generated by the
+            Semaphore circuit and checked by the configured backend/contract.
+          </p>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div>
+              <label htmlFor="sb-secret" className="brut-label">Member secret key</label>
+              <input
+                id="sb-secret"
+                type="text"
+                value={sandboxSecret}
+                onChange={(e) => setSandboxSecret(e.target.value)}
+                className="brut-field"
+              />
+            </div>
+            <div>
+              <label htmlFor="sb-a" className="brut-label">Scope A (teaching)</label>
+              <input
+                id="sb-a"
+                type="text"
+                value={sandboxScope}
+                onChange={(e) => setSandboxScope(e.target.value)}
+                className="brut-field"
+              />
+            </div>
+            <div>
+              <label htmlFor="sb-b" className="brut-label">Scope B (facilities)</label>
+              <input
+                id="sb-b"
+                type="text"
+                value={sandboxScopeB}
+                onChange={(e) => setSandboxScopeB(e.target.value)}
+                className="brut-field"
+              />
+            </div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-            <div className="text-[11px] text-slate-400 font-mono">Nullifier for Scope B ({sandboxScopeB}):</div>
-            <div className="font-mono text-violet-300 text-xs break-all">{nullifierScopeB}</div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <div className="brut-label !mb-0">Nullifier / {sandboxScope}</div>
+              <div className="brut-code">{nullifierScopeA}</div>
+            </div>
+            <div className="space-y-2">
+              <div className="brut-label !mb-0">Nullifier / {sandboxScopeB}</div>
+              <div className="brut-code !bg-signal !text-ink">{nullifierScopeB}</div>
+            </div>
           </div>
+
+          <p className="text-xs text-steel">
+            Illustration only: the displayed toy values do not establish privacy or unlinkability. Do not use these values for security decisions.
+          </p>
         </div>
-
-        <p className="text-[11px] text-slate-400 italic">
-          * Cryptographic property: Even if an adversary intercepts both reports, Scope A and Scope B nullifiers cannot be linked to the same reporter.
-        </p>
       </section>
 
-      {/* Security Boundaries Matrix */}
-      <section className="glass-card p-6 rounded-2xl border border-slate-800 space-y-4">
-        <h2 className="text-base font-bold text-white">Implemented Security Controls vs Future Work</h2>
+      {/* Controls matrix */}
+      <section className="brut-card">
+        <div className="border-b-[3px] border-ink bg-ink px-5 py-3 text-paper">
+          <h2 className="font-display text-3xl uppercase tracking-wide">Controls: built vs. not covered</h2>
+        </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="border-b border-slate-800 text-slate-400 font-mono uppercase text-[10px]">
-              <tr>
-                <th className="py-2 px-3">Security Control</th>
-                <th className="py-2 px-3">Status in Prototype 1</th>
-                <th className="py-2 px-3">Implementation & Verification</th>
+          <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
+            <thead>
+              <tr className="border-b-[3px] border-ink bg-signal font-mono text-[0.7rem] uppercase tracking-wider">
+                <th scope="col" className="px-4 py-3">Control</th>
+                <th scope="col" className="px-4 py-3">Status</th>
+                <th scope="col" className="px-4 py-3">Detail</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 text-slate-300">
-              <tr>
-                <td className="py-3 px-3 font-semibold text-white">Zero-Knowledge Proofs</td>
-                <td className="py-3 px-3 text-emerald-400">✔️ Real Semaphore V4 (SnarkJS / Groth16)</td>
-                <td className="py-3 px-3 text-slate-400">Generates Groth16 proof on client; verified server-side against Merkle root</td>
-              </tr>
-              <tr>
-                <td className="py-3 px-3 font-semibold text-white">Scoped Duplicate Prevention</td>
-                <td className="py-3 px-3 text-emerald-400">✔️ Fully Implemented (DB Constraint)</td>
-                <td className="py-3 px-3 text-slate-400">Enforced via DB unique key on (scope_id, nullifier)</td>
-              </tr>
-              <tr>
-                <td className="py-3 px-3 font-semibold text-white">Privacy Risk Gate</td>
-                <td className="py-3 px-3 text-emerald-400">✔️ Fully Implemented (Regex & Rules)</td>
-                <td className="py-3 px-3 text-slate-400">Flags direct IDs, dates, rooms, and serious allegations</td>
-              </tr>
-              <tr>
-                <td className="py-3 px-3 font-semibold text-white">Threshold Aggregation</td>
-                <td className="py-3 px-3 text-emerald-400">✔️ Fully Implemented (&ge;3 Members)</td>
-                <td className="py-3 px-3 text-slate-400">Suppresses summary metrics under minimum contributor count</td>
-              </tr>
-              <tr>
-                <td className="py-3 px-3 font-semibold text-white">IP & Network Anonymity</td>
-                <td className="py-3 px-3 text-amber-400">⚠️ Local Server Transport</td>
-                <td className="py-3 px-3 text-slate-400">Residual risk: IP addresses require Tor onion routing or blind relay proxies</td>
-              </tr>
+            <tbody>
+              {CONTROLS.map((row) => (
+                <tr key={row.name} className="border-b-2 border-ink last:border-b-0">
+                  <th scope="row" className="px-4 py-3 align-top font-bold">{row.name}</th>
+                  <td className="px-4 py-3 align-top">
+                    <span
+                      className={`brut-tag ${
+                        row.tone === 'ok' ? 'brut-tag-go' : row.tone === 'warn' ? 'brut-tag-alarm' : 'brut-tag-signal'
+                      }`}
+                    >
+                      {row.tone === 'ok' && <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={3} />}
+                      {row.tone === 'warn' && <AlertTriangle className="h-3.5 w-3.5" strokeWidth={3} />}
+                      {row.tone === 'opt' && <Link2 className="h-3.5 w-3.5" strokeWidth={3} />}
+                      {row.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 align-top text-xs leading-relaxed text-steel">{row.detail}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       </section>
-
     </div>
   );
 };

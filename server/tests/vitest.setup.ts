@@ -1,4 +1,3 @@
-import WorkerPkg from 'web-worker';
+import Worker from 'web-worker';
 
-const WorkerClass = (WorkerPkg as any).default || WorkerPkg;
-(globalThis as any).Worker = WorkerClass;
+(globalThis as any).Worker = Worker;

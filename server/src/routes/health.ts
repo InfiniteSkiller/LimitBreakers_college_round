@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
+import { ChainService } from '../services/chainService.js';
 
-export async function healthRoutes(fastify: FastifyInstance) {
+export async function healthRoutes(fastify: FastifyInstance, opts: { chain?: ChainService } = {}) {
   fastify.get('/', async (_request, reply) => {
     return reply.status(200).send({
       service: 'Incognito Privacy Engine API',
@@ -16,7 +17,8 @@ export async function healthRoutes(fastify: FastifyInstance) {
       service: 'Incognito Privacy Engine API',
       timestamp: new Date().toISOString(),
       version: '1.0.0-prototype',
-      verificationMode: 'SIMULATION_ZK_INTERFACE',
+      verificationMode: opts.chain?.enabled ? 'SEMAPHORE_V4_OFFCHAIN_AND_ONCHAIN' : 'SEMAPHORE_V4_OFFCHAIN',
+      chainEnabled: Boolean(opts.chain?.enabled),
     });
   });
 }

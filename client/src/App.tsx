@@ -6,6 +6,7 @@ import { SubmitReportPage } from './pages/SubmitReportPage';
 import { ModeratorPage } from './pages/ModeratorPage';
 import { RecipientDashboardPage } from './pages/RecipientDashboardPage';
 import { SecurityArchitecturePage } from './pages/SecurityArchitecturePage';
+import { BackgroundDecor } from './components/BackgroundDecor';
 import { checkHealth } from './services/api';
 
 export function App() {
@@ -23,15 +24,16 @@ export function App() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#090d16] text-slate-100 selection:bg-violet-500/30 selection:text-violet-200">
+    <div className="relative min-h-screen flex flex-col text-ink">
+      <BackgroundDecor />
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         isBackendConnected={isBackendConnected}
-        isModeratorAuthenticated={true}
+        isModeratorAuthenticated={false}
       />
 
-      <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      <main className="relative z-10 flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         {activeTab === 'overview' && (
           <LandingPage
             onNavigateSubmit={() => setActiveTab('submit')}

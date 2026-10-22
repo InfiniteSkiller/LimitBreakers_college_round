@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { fetchModeratorReports, updateReportStatus, ReportItem } from '../services/api';
 import { PrivacyBadge } from '../components/PrivacyBadge';
-import { LayoutDashboard, Lock, Key, ShieldAlert, CheckCircle2, XCircle, Edit3, Eye, RefreshCw, Filter, AlertTriangle } from 'lucide-react';
+import { PageHeader } from '../components/PageHeader';
+import { LayoutDashboard, Lock, Key, CheckCircle2, XCircle, Edit3, RefreshCw, AlertTriangle, X, Inbox, Loader2 } from 'lucide-react';
 
 export const ModeratorPage: React.FC = () => {
-  const [token, setToken] = useState('moderator-secret-token-2026');
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [token, setToken] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [reports, setReports] = useState<ReportItem[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(false);
@@ -34,8 +35,8 @@ export const ModeratorPage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadReports();
-  }, [filterStatus]);
+    if (isAuthenticated) loadReports();
+  }, [filterStatus, isAuthenticated]);
 
   const handleAuthSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,77 +61,67 @@ export const ModeratorPage: React.FC = () => {
     }
   };
 
+  const FILTERS = [
+    { id: 'all', label: 'All reports' },
+    { id: 'held_for_privacy_review', label: 'Held for review' },
+    { id: 'needs_sanitization', label: 'Needs redaction' },
+    { id: 'approved_for_aggregation', label: 'Approved' },
+    { id: 'rejected', label: 'Rejected' },
+  ];
+
   return (
     <div className="space-y-8 py-4">
-      
-      {/* Header & Auth State */}
-      <div className="glass-panel p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="p-2.5 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
-            <LayoutDashboard className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Moderator Review Portal</h1>
-            <p className="text-slate-400 text-xs">
-              Review privacy flags, redact sensitive context, approve for aggregate views, or escalate serious allegations.
-            </p>
-          </div>
-        </div>
-
-        {/* Authenticated Status Toggle */}
-        <form onSubmit={handleAuthSubmit} className="flex items-center space-x-2">
+      <PageHeader
+        icon={LayoutDashboard}
+        kicker="Moderator portal"
+        title="Review queue"
+        description="Review privacy flags, redact sensitive context, approve reports for aggregate views, or escalate serious allegations."
+      >
+        <form onSubmit={handleAuthSubmit} className="flex flex-wrap items-center gap-3">
           <div className="relative">
-            <Key className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+            <label htmlFor="mod-token" className="sr-only">Moderator bearer token</label>
+            <Key className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink" strokeWidth={2.75} />
             <input
+              id="mod-token"
               type="password"
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              className="pl-8 pr-3 py-1.5 rounded-lg glass-input text-xs font-mono w-56"
-              placeholder="Moderator Bearer Token"
+              className="brut-field w-60 !pl-9"
+              placeholder="Moderator token"
             />
           </div>
-          <button
-            type="submit"
-            className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-all"
-          >
-            Authenticate
+          <button type="submit" className="brut-btn">
+            <span>Authenticate</span>
           </button>
         </form>
-      </div>
+      </PageHeader>
 
-      {/* Strict Privacy Guarantee Box */}
-      <div className="p-4 rounded-xl bg-violet-950/20 border border-violet-500/20 text-xs text-violet-200 flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Lock className="w-4 h-4 text-violet-400 flex-shrink-0" />
+      {/* Privacy note + refresh */}
+      <div className="brut-card-yellow flex items-center justify-between gap-4 p-4 !shadow-hard-sm">
+        <div className="flex items-start gap-3 text-xs leading-relaxed">
+          <Lock className="mt-0.5 h-5 w-5 flex-shrink-0" strokeWidth={2.75} />
           <span>
-            <strong>Zero Reporter Exposure Guaranteed:</strong> Moderator views only display report content, category, and privacy flags. Student identity records, student IDs, and nullifiers are strictly excluded from response payloads.
+            <strong className="uppercase tracking-wider">No reporter identity in this view.</strong> Moderators see report
+            content, category and privacy flags only. Student identity records, student IDs and nullifiers are excluded
+            from these responses.
           </span>
         </div>
-        <button
-          onClick={loadReports}
-          className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all ml-2"
-          title="Refresh reports list"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+        <button type="button" onClick={loadReports} className="brut-btn brut-btn-paper brut-btn-sm flex-shrink-0" aria-label="Refresh reports list">
+          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} strokeWidth={3} />
         </button>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex overflow-x-auto pb-2 space-x-2 border-b border-slate-800 text-xs">
-        {[
-          { id: 'all', label: 'All Reports' },
-          { id: 'held_for_privacy_review', label: 'Held for Privacy Review' },
-          { id: 'needs_sanitization', label: 'Needs Redaction' },
-          { id: 'approved_for_aggregation', label: 'Approved' },
-          { id: 'rejected', label: 'Rejected' },
-        ].map((tab) => (
+      {/* Filters */}
+      <div className="flex gap-3 overflow-x-auto pb-2" role="tablist" aria-label="Report status filter">
+        {FILTERS.map((tab) => (
           <button
             key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={filterStatus === tab.id}
             onClick={() => setFilterStatus(tab.id)}
-            className={`px-3.5 py-2 rounded-lg font-medium whitespace-nowrap transition-all ${
-              filterStatus === tab.id
-                ? 'bg-indigo-600/30 text-indigo-200 border border-indigo-500/40'
-                : 'text-slate-400 hover:bg-slate-800/60'
+            className={`flex-shrink-0 border-[3px] border-ink px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider transition-[transform,box-shadow] duration-100 ${
+              filterStatus === tab.id ? 'bg-ink text-signal shadow-hard-sm' : 'bg-card hover:-translate-y-0.5 hover:shadow-hard-sm'
             }`}
           >
             {tab.label}
@@ -139,169 +130,171 @@ export const ModeratorPage: React.FC = () => {
       </div>
 
       {errorMessage && (
-        <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs flex items-center space-x-2">
-          <AlertTriangle className="w-4 h-4 text-rose-400" />
+        <div role="alert" className="flex items-center gap-2 border-[3px] border-ink bg-alarm p-4 text-sm font-bold">
+          <AlertTriangle className="h-5 w-5 flex-shrink-0" strokeWidth={2.75} />
           <span>{errorMessage}</span>
         </div>
       )}
 
-      {/* Reports List Grid */}
-      <div className="grid grid-cols-1 gap-4">
+      {/* Reports */}
+      <div className="grid grid-cols-1 gap-6">
         {reports.length === 0 && !isLoading ? (
-          <div className="glass-card p-12 text-center text-slate-400 text-xs rounded-2xl">
-            No reports found for the selected status filter.
+          <div className="brut-card flex flex-col items-center gap-3 p-12 text-center">
+            <Inbox className="h-10 w-10" strokeWidth={2} />
+            <p className="font-display text-3xl uppercase tracking-wide">Nothing here</p>
+            <p className="text-sm text-steel">No reports found for the selected status filter.</p>
           </div>
         ) : (
           reports.map((report) => (
-            <div
-              key={report.id}
-              className={`glass-card p-5 rounded-2xl border transition-all space-y-3 ${
-                report.isSeriousAllegation
-                  ? 'border-rose-500/40 bg-rose-950/10'
-                  : 'border-slate-800 hover:border-slate-700'
-              }`}
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-center space-x-2">
-                  <span className="font-semibold text-white text-xs uppercase tracking-wide px-2.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
-                    {report.category}
-                  </span>
-                  <span className="text-slate-400 text-xs font-mono">Scope: {report.scopeId}</span>
-                  <span className="text-slate-500 text-[11px]">
-                    Submitted: {new Date(report.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-                
-                <PrivacyBadge status={report.status} isSeriousAllegation={report.isSeriousAllegation} />
-              </div>
+            <article key={report.id} className="brut-card overflow-hidden">
+              {report.isSeriousAllegation && <div className="hazard h-3 border-b-[3px] border-ink" />}
 
-              {/* Content Body */}
-              <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/80 text-slate-200 text-xs font-sans leading-relaxed">
-                {report.sanitizedContent ? (
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-amber-400 font-mono uppercase font-semibold">[Sanitized Draft Excerpt]:</span>
-                    <p>{report.sanitizedContent}</p>
+              <div className="space-y-4 p-5">
+                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="brut-tag brut-tag-ink">{report.category}</span>
+                    <span className="font-mono text-xs font-bold">Scope: {report.scopeId}</span>
+                    <span className="font-mono text-xs text-steel">{new Date(report.createdAt).toLocaleDateString()}</span>
                   </div>
-                ) : (
-                  <p>{report.content}</p>
+                  <PrivacyBadge status={report.status} isSeriousAllegation={report.isSeriousAllegation} />
+                </div>
+
+                {/* Content */}
+                <div className="brut-inset p-4 text-sm leading-relaxed">
+                  {report.sanitizedContent ? (
+                    <div className="space-y-2">
+                      <span className="brut-tag brut-tag-signal">Sanitized draft excerpt</span>
+                      <p>{report.sanitizedContent}</p>
+                    </div>
+                  ) : (
+                    <p>{report.content}</p>
+                  )}
+                </div>
+
+                {/* Flags */}
+                {report.privacyFlags && report.privacyFlags.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="brut-label !mb-0">Privacy flags</span>
+                    {report.privacyFlags.map((flag, idx) => (
+                      <span key={idx} className="brut-tag brut-tag-signal">
+                        <AlertTriangle className="h-3 w-3" strokeWidth={3} />
+                        {flag}
+                      </span>
+                    ))}
+                  </div>
                 )}
-              </div>
 
-              {/* Flags List */}
-              {report.privacyFlags && report.privacyFlags.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
-                  <span className="text-slate-400 font-medium">Privacy Flags:</span>
-                  {report.privacyFlags.map((flag, idx) => (
-                    <span key={idx} className="px-2 py-0.5 rounded bg-violet-950/60 text-violet-300 border border-violet-500/30 font-mono">
-                      ⚠️ {flag}
-                    </span>
-                  ))}
-                </div>
-              )}
+                {/* Actions */}
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t-[3px] border-dashed border-ink pt-4">
+                  <span className="font-mono text-[0.7rem] text-steel">ID {report.id.substring(0, 8)}...</span>
 
-              {/* Moderator Actions Toolbar */}
-              <div className="flex flex-wrap items-center justify-between pt-2 border-t border-slate-800/60 text-xs">
-                <span className="text-[11px] text-slate-500 font-mono">Report ID: {report.id.substring(0, 8)}...</span>
-
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => {
-                      setSelectedReport(report);
-                      setEditedSanitizedContent(report.sanitizedContent || report.content);
-                    }}
-                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium transition-all flex items-center space-x-1"
-                  >
-                    <Edit3 className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>Inspect & Redact</span>
-                  </button>
-
-                  {report.status !== 'approved_for_aggregation' && (
+                  <div className="flex flex-wrap items-center gap-3">
                     <button
-                      onClick={() => handleUpdateStatus(report.id, 'approved_for_aggregation')}
-                      className="px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 font-medium transition-all flex items-center space-x-1"
+                      type="button"
+                      onClick={() => {
+                        setSelectedReport(report);
+                        setEditedSanitizedContent(report.sanitizedContent || report.content);
+                      }}
+                      className="brut-btn brut-btn-paper brut-btn-sm"
                     >
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Approve</span>
+                      <Edit3 className="h-3.5 w-3.5" strokeWidth={2.75} />
+                      <span>Inspect & redact</span>
                     </button>
-                  )}
 
-                  {report.status !== 'rejected' && (
-                    <button
-                      onClick={() => handleUpdateStatus(report.id, 'rejected')}
-                      className="px-3 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 font-medium transition-all flex items-center space-x-1"
-                    >
-                      <XCircle className="w-3.5 h-3.5 text-rose-400" />
-                      <span>Reject</span>
-                    </button>
-                  )}
+                    {report.status !== 'approved_for_aggregation' && (
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateStatus(report.id, 'approved_for_aggregation')}
+                        className="brut-btn brut-btn-go brut-btn-sm"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2.75} />
+                        <span>Approve</span>
+                      </button>
+                    )}
+
+                    {report.status !== 'rejected' && (
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateStatus(report.id, 'rejected')}
+                        className="brut-btn brut-btn-alarm brut-btn-sm"
+                      >
+                        <XCircle className="h-3.5 w-3.5" strokeWidth={2.75} />
+                        <span>Reject</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-
-            </div>
+            </article>
           ))
         )}
       </div>
 
-      {/* Inspector / Sanitization Modal */}
+      {/* Inspector / sanitization modal */}
       {selectedReport && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="glass-panel p-6 rounded-2xl max-w-2xl w-full border border-slate-700 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-white text-base">Sanitize & Redact Report Content</h3>
-              <button
-                onClick={() => setSelectedReport(null)}
-                className="text-slate-400 hover:text-white text-xs font-mono"
-              >
-                ✕ Close
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/70 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="sanitize-title"
+        >
+          <div className="brut-card max-h-[90vh] w-full max-w-2xl overflow-y-auto !shadow-hard-lg">
+            <div className="flex items-center justify-between gap-3 border-b-[3px] border-ink bg-signal px-5 py-3 text-ink">
+              <h2 id="sanitize-title" className="font-display text-3xl uppercase tracking-wide">Sanitize & redact</h2>
+              <button type="button" onClick={() => setSelectedReport(null)} className="brut-btn brut-btn-paper brut-btn-sm" aria-label="Close dialog">
+                <X className="h-4 w-4" strokeWidth={3.5} />
+                <span>Close</span>
               </button>
             </div>
 
-            <div className="space-y-1">
-              <label className="block text-slate-300 text-xs font-semibold">Raw Original Content (Read-Only):</label>
-              <div className="p-3 rounded-lg bg-slate-950 text-slate-300 text-xs font-mono leading-relaxed border border-slate-800 max-h-32 overflow-y-auto">
-                {selectedReport.content}
+            <div className="space-y-5 p-5">
+              <div>
+                <span className="brut-label">Raw original content (read-only)</span>
+                <div className="brut-inset max-h-36 overflow-y-auto p-3 font-mono text-xs leading-relaxed">
+                  {selectedReport.content}
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-1">
-              <label className="block text-slate-300 text-xs font-semibold">Sanitized Version for Aggregated Feed:</label>
-              <textarea
-                rows={4}
-                value={editedSanitizedContent}
-                onChange={(e) => setEditedSanitizedContent(e.target.value)}
-                className="w-full p-3 rounded-lg glass-input text-xs font-sans leading-relaxed"
-                placeholder="Replace personal names, dates, or emails with [REDACTED]..."
-              />
-            </div>
+              <div>
+                <label htmlFor="sanitized" className="brut-label">Sanitized version for the aggregated feed</label>
+                <textarea
+                  id="sanitized"
+                  rows={5}
+                  value={editedSanitizedContent}
+                  onChange={(e) => setEditedSanitizedContent(e.target.value)}
+                  className="brut-field font-sans text-sm"
+                  placeholder="Replace personal names, dates or emails with [REDACTED]..."
+                />
+              </div>
 
-            <div className="flex items-center justify-end space-x-3 pt-2">
-              <button
-                onClick={() => setSelectedReport(null)}
-                className="px-4 py-2 rounded-lg glass-panel hover:bg-slate-800 text-slate-300 text-xs"
-              >
-                Cancel
-              </button>
-              
-              <button
-                onClick={() => handleUpdateStatus(selectedReport.id, 'held_for_privacy_review')}
-                disabled={isUpdating}
-                className="px-4 py-2 rounded-lg bg-violet-600/30 hover:bg-violet-600/40 text-violet-300 border border-violet-500/40 text-xs"
-              >
-                Hold for Privacy Review
-              </button>
+              <div className="flex flex-wrap items-center justify-end gap-3 border-t-[3px] border-dashed border-ink pt-4">
+                <button type="button" onClick={() => setSelectedReport(null)} className="brut-btn brut-btn-paper">
+                  Cancel
+                </button>
 
-              <button
-                onClick={() => handleUpdateStatus(selectedReport.id, 'approved_for_aggregation')}
-                disabled={isUpdating}
-                className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs shadow-md"
-              >
-                Save & Approve for Aggregation
-              </button>
+                <button
+                  type="button"
+                  onClick={() => handleUpdateStatus(selectedReport.id, 'held_for_privacy_review')}
+                  disabled={isUpdating}
+                  className="brut-btn brut-btn-ink"
+                >
+                  Hold for privacy review
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleUpdateStatus(selectedReport.id, 'approved_for_aggregation')}
+                  disabled={isUpdating}
+                  className="brut-btn brut-btn-go"
+                >
+                  {isUpdating && <Loader2 className="h-4 w-4 animate-spin" strokeWidth={3} />}
+                  <span>Save & approve</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 };
